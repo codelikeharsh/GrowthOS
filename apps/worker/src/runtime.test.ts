@@ -1,6 +1,7 @@
 import { parseEnvironment, workerEnvironmentSchema } from '@growthos/config'
 import { describe, expect, it, vi } from 'vitest'
 import { safeJobFailure, WorkerRuntime, type RuntimeLogger } from './runtime.js'
+import { auditOrchestrationJobName, auditOrchestrationQueueName } from '@growthos/config'
 
 const logger: RuntimeLogger = { info: vi.fn(), error: vi.fn() }
 
@@ -32,5 +33,10 @@ describe('worker foundation', () => {
     await runtime.stop()
     await runtime.stop()
     expect(runtime.health).toBe('stopped')
+  })
+
+  it('shares the typed audit orchestration queue contract without registering a crawler', () => {
+    expect(auditOrchestrationQueueName).toBe('audit-orchestration')
+    expect(auditOrchestrationJobName).toBe('audit-orchestration.requested')
   })
 })

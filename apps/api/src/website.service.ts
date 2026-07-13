@@ -47,6 +47,15 @@ export class WebsiteService {
     return website
   }
 
+  async authorize(
+    userId: string,
+    headers: WebsiteContextHeaders,
+    permission: string,
+    writable: boolean,
+  ): Promise<string> {
+    return this.resolve(userId, headers, permission, writable)
+  }
+
   async prepareOutboundTarget(
     userId: string,
     headers: WebsiteContextHeaders,

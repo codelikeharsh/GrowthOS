@@ -136,6 +136,12 @@ describe.sequential('Phase 4A website registration integration', () => {
     await database.auditLog.deleteMany({
       where: { organizationId: { in: [agencyId, businessId, unrelatedBusinessId] } },
     })
+    await database.outboxEvent.deleteMany({
+      where: { organizationId: { in: [agencyId, businessId, unrelatedBusinessId] } },
+    })
+    await database.auditRun.deleteMany({
+      where: { organizationId: { in: [agencyId, businessId, unrelatedBusinessId] } },
+    })
     await database.website.deleteMany({
       where: { businessOrganizationId: { in: [businessId, unrelatedBusinessId] } },
     })
@@ -334,5 +340,126 @@ describe.sequential('Phase 4A website registration integration', () => {
     ).rejects.toSatisfy(
       (error: unknown) => error instanceof Error && error.message === 'Organization not found',
     )
+  })
+
+  it('creates, dispatches, lists, authorizes, and cancels queued audits without crawling', async () => {
+    const businessHeaders = {
+      'x-organization-id': businessId,
+      'idempotency-key': `audit-${marker}`,
+    }
+    const created = await request(
+      'POST',
+      `/api/v1/websites/${businessWebsiteId}/audits`,
+      {},
+      businessJar,
+      businessHeaders,
+    )
+    expect(created.statusCode, created.body).toBe(201)
+    const audit = created.json() as { id: string; status: string }
+    expect(audit.status).toBe('QUEUED')
+    expect(
+      (
+        await request(
+          'POST',
+          `/api/v1/websites/${businessWebsiteId}/audits`,
+          {},
+          businessJar,
+          businessHeaders,
+        )
+      ).body,
+    ).toContain(audit.id)
+    expect(
+      (
+        await request('POST', `/api/v1/websites/${businessWebsiteId}/audits`, {}, businessJar, {
+          ...businessHeaders,
+          'idempotency-key': `other-${marker}`,
+        })
+      ).statusCode,
+    ).toBe(409)
+    expect(
+      await database.outboxEvent.count({
+        where: { auditRunId: audit.id, processedAt: { not: null } },
+      }),
+    ).toBe(1)
+    expect(
+      (
+        await request(
+          'GET',
+          `/api/v1/websites/${businessWebsiteId}/audits`,
+          undefined,
+          businessJar,
+          businessHeaders,
+        )
+      ).body,
+    ).toContain(audit.id)
+    const agencyHeaders = {
+      'x-agency-organization-id': agencyId,
+      'x-relationship-id': relationshipId,
+    }
+    expect(
+      (
+        await request(
+          'GET',
+          `/api/v1/websites/${businessWebsiteId}/audits/${audit.id}`,
+          undefined,
+          agencyJar,
+          agencyHeaders,
+        )
+      ).statusCode,
+    ).toBe(200)
+    expect(
+      (
+        await request(
+          'GET',
+          `/api/v1/websites/${businessWebsiteId}/audits/${audit.id}`,
+          undefined,
+          outsiderJar,
+          businessHeaders,
+        )
+      ).statusCode,
+    ).toBe(404)
+    const viewerRole = await database.role.findUniqueOrThrow({ where: { name: RoleName.VIEWER } })
+    const outsider = await database.user.findUniqueOrThrow({ where: { email: outsiderEmail } })
+    await database.organizationMember.create({
+      data: { organizationId: businessId, userId: outsider.id, roleId: viewerRole.id },
+    })
+    expect(
+      (
+        await request('POST', `/api/v1/websites/${businessWebsiteId}/audits`, {}, outsiderJar, {
+          'x-organization-id': businessId,
+          'idempotency-key': `viewer-${marker}`,
+        })
+      ).statusCode,
+    ).toBe(403)
+    expect(
+      (
+        await request(
+          'DELETE',
+          `/api/v1/websites/${businessWebsiteId}/audits/${audit.id}`,
+          undefined,
+          businessJar,
+          businessHeaders,
+        )
+      ).statusCode,
+    ).toBe(200)
+    expect(
+      (
+        await request(
+          'DELETE',
+          `/api/v1/websites/${businessWebsiteId}/audits/${audit.id}`,
+          undefined,
+          businessJar,
+          businessHeaders,
+        )
+      ).statusCode,
+    ).toBe(409)
+    expect(
+      (
+        await request('POST', `/api/v1/websites/${websiteId}/audits`, {}, businessJar, {
+          'x-organization-id': businessId,
+          'idempotency-key': `disabled-${marker}`,
+        })
+      ).statusCode,
+    ).toBe(409)
   })
 })

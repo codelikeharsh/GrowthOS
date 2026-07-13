@@ -19,6 +19,9 @@ import { BusinessProfileService } from './business-profile.service.js'
 import { PermissionService } from './permission.service.js'
 import { WebsiteController } from './website.controller.js'
 import { WebsiteService } from './website.service.js'
+import { AuditRunController } from './audit-run.controller.js'
+import { AuditRunService } from './audit-run.service.js'
+import { AuditOutboxDispatcher } from './audit-outbox.service.js'
 import {
   NodeDnsResolver,
   OutboundRequestPolicy,
@@ -36,6 +39,7 @@ import {
     AgencyClientController,
     BusinessProfileController,
     WebsiteController,
+    AuditRunController,
   ],
   providers: [
     DependenciesService,
@@ -51,6 +55,8 @@ import {
     AgencyClientService,
     BusinessProfileService,
     WebsiteService,
+    AuditRunService,
+    AuditOutboxDispatcher,
     NodeDnsResolver,
     { provide: WEBSITE_DNS_RESOLVER, useExisting: NodeDnsResolver },
     WebsiteTargetValidator,

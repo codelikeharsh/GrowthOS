@@ -89,13 +89,15 @@ Validation: see [Phase 3 acceptance validation](testing/phase-3-validation.md).
 
 ## Phase 4: Website Management And Audit Foundation
 
-Status: Phase 4A and 4B complete. Website registration and the SSRF validation/connection-policy
-foundation are implemented; crawling and audit work have not started.
+Status: Phase 4A–4C complete. Website registration, SSRF validation, and the audit
+lifecycle/outbox foundation are implemented; crawling and audit processing have not started.
 
 - Phase 4A: business-owned website registration, tenant-aware agency/business management, storage
   URL normalization, and safe disablement.
 - Phase 4B: target parsing, injectable A/AAAA DNS validation, IP policy, CNAME alias checks,
   redirect validation, and validated-IP connection instructions for a later crawler.
+- Phase 4C: auditable queued audit runs, lifecycle validation, partial active-audit uniqueness,
+  typed `audit-orchestration` outbox dispatch, and agency/business audit history UI.
 - Remaining Phase 4: audit creation, queue orchestration, crawler, page discovery/storage, progress,
   findings, screenshots, and report UI.
 

@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { type FormEvent, useEffect, useState } from 'react'
 import { apiRequest } from '../lib/api'
+import { AuditHistory } from './audit-history'
 
 export interface WebsiteContext {
   headers: Record<string, string>
@@ -269,6 +270,7 @@ export function WebsiteDetail({
           </p>
         ) : null}
       </form>
+      <AuditHistory context={context} websiteId={websiteId} />
     </div>
   )
 }

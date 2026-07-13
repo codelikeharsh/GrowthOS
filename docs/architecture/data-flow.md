@@ -100,3 +100,7 @@ sequenceDiagram
   Worker->>External: Deliver notification, webhook, email, or internal task
   Worker->>DB: Mark delivered or retry with bounded attempts
 ```
+
+Phase 4C writes an `audit_runs` row, `outbox_events` row, and audit-log event in one transaction.
+The dispatcher publishes only audit, website, and organization UUIDs to `audit-orchestration`; no
+crawler consumer is registered until Phase 4D.

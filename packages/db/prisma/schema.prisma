@@ -88,6 +88,23 @@ enum BusinessSocialPlatform {
   OTHER
 }
 
+enum AuditRunStatus {
+  QUEUED
+  VALIDATING_TARGET
+  CRAWLING
+  ANALYZING
+  GENERATING_RECOMMENDATIONS
+  COMPLETED
+  PARTIAL
+  FAILED
+  CANCELLED
+}
+
+enum AuditTriggerType {
+  MANUAL
+  SCHEDULED
+}
+
 model User {
   id                         String                     @id @default(uuid()) @db.Uuid
   email                      String                     @unique @db.VarChar(320)
@@ -108,6 +125,7 @@ model User {
   clientRelationshipsCreated AgencyClientRelationship[] @relation("RelationshipCreator")
   clientRelationshipsManaged AgencyClientRelationship[] @relation("RelationshipManager")
   agencyClientNotes          AgencyClientNote[]         @relation("NoteAuthor")
+  auditRunsInitiated         AuditRun[]                 @relation("AuditInitiator")
 
   @@map("users")
 }
@@ -180,6 +198,8 @@ model Organization {
   businessHours         BusinessHour[]
   businessSocialLinks   BusinessSocialLink[]
   websites              Website[]
+  auditRuns             AuditRun[]
+  outboxEvents          OutboxEvent[]
 
   @@map("organizations")
 }
@@ -349,10 +369,62 @@ model Website {
   createdAt              DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt              DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
   businessOrganization   Organization @relation(fields: [businessOrganizationId], references: [id], onDelete: Restrict)
+  auditRuns              AuditRun[]
 
   @@unique([businessOrganizationId, normalizedUrl])
   @@index([businessOrganizationId, isActive, createdAt])
   @@map("websites")
+}
+
+model AuditRun {
+  id                 String           @id @default(uuid()) @db.Uuid
+  organizationId     String           @map("organization_id") @db.Uuid
+  websiteId          String           @map("website_id") @db.Uuid
+  initiatedByUserId  String           @map("initiated_by_user_id") @db.Uuid
+  status             AuditRunStatus   @default(QUEUED)
+  triggerType        AuditTriggerType @default(MANUAL) @map("trigger_type")
+  configuration      Json?
+  idempotencyKey     String?          @map("idempotency_key") @db.VarChar(128)
+  startedAt          DateTime?        @map("started_at") @db.Timestamptz(6)
+  completedAt        DateTime?        @map("completed_at") @db.Timestamptz(6)
+  failedAt           DateTime?        @map("failed_at") @db.Timestamptz(6)
+  failureCode        String?          @map("failure_code") @db.VarChar(100)
+  failureMessage     String?          @map("failure_message") @db.VarChar(500)
+  pagesDiscovered    Int              @default(0) @map("pages_discovered")
+  pagesProcessed     Int              @default(0) @map("pages_processed")
+  previousAuditRunId String?          @map("previous_audit_run_id") @db.Uuid
+  version            Int              @default(1)
+  createdAt          DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization       Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  website            Website          @relation(fields: [websiteId], references: [id], onDelete: Restrict)
+  initiatedBy        User             @relation("AuditInitiator", fields: [initiatedByUserId], references: [id], onDelete: Restrict)
+  previousAuditRun   AuditRun?        @relation("PreviousAuditRun", fields: [previousAuditRunId], references: [id], onDelete: SetNull)
+  subsequentAuditRuns AuditRun[]      @relation("PreviousAuditRun")
+  outboxEvent        OutboxEvent?
+
+  @@unique([websiteId, idempotencyKey])
+  @@index([organizationId, createdAt])
+  @@index([websiteId, createdAt])
+  @@map("audit_runs")
+}
+
+model OutboxEvent {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  auditRunId     String       @unique @map("audit_run_id") @db.Uuid
+  eventType      String       @map("event_type") @db.VarChar(100)
+  payload        Json
+  attempts       Int          @default(0)
+  processedAt    DateTime?    @map("processed_at") @db.Timestamptz(6)
+  lastError      String?      @map("last_error") @db.VarChar(500)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  auditRun       AuditRun     @relation(fields: [auditRunId], references: [id], onDelete: Restrict)
+
+  @@index([processedAt, createdAt])
+  @@map("outbox_events")
 }
 
 model OrganizationMember {

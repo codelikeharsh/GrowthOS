@@ -3,6 +3,8 @@ import { PrismaClient } from '../generated/client/index.js'
 export {
   AgencyClientNoteVisibility,
   AgencyClientRelationshipStatus,
+  AuditRunStatus,
+  AuditTriggerType,
   BusinessDayOfWeek,
   BusinessLocationType,
   BusinessPriceType,
@@ -31,6 +33,8 @@ export type {
   BusinessHour,
   BusinessSocialLink,
   Website,
+  AuditRun,
+  OutboxEvent,
 } from '../generated/client/index.js'
 
 let client: PrismaClient | undefined

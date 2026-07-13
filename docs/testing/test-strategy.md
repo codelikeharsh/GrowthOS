@@ -52,6 +52,8 @@ pytest
 - Atomic client creation, active-relationship uniqueness, profile resources, note visibility,
   optimistic concurrency, and Phase 3 audits. Implemented in Phase 3.
 - Audit creation idempotency and queue job creation.
+- Audit lifecycle, active-audit uniqueness, outbox publication, cancellation, and tenant isolation.
+  Implemented in Phase 4C; no crawler test exists yet.
 - Outbox processing.
 - Lead capture validation, rate limiting, dedupe, and activity creation.
 - Payment webhook verification, replay handling, and invoice update.

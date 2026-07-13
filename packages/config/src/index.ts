@@ -46,6 +46,14 @@ export const workerEnvironmentSchema = commonSchema.extend({
 export type ApiEnvironment = z.infer<typeof apiEnvironmentSchema>
 export type WorkerEnvironment = z.infer<typeof workerEnvironmentSchema>
 
+export const auditOrchestrationQueueName = 'audit-orchestration'
+export const auditOrchestrationJobName = 'audit-orchestration.requested'
+export interface AuditOrchestrationPayload {
+  auditRunId: string
+  websiteId: string
+  organizationId: string
+}
+
 export function parseEnvironment<T>(schema: z.ZodType<T>, environment: NodeJS.ProcessEnv): T {
   const result = schema.safeParse(environment)
   if (!result.success) {

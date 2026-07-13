@@ -1,6 +1,7 @@
 import {
   AgencyClientNoteVisibility,
   AgencyClientRelationshipStatus,
+  AuditTriggerType,
   BusinessDayOfWeek,
   BusinessLocationType,
   BusinessPriceType,
@@ -107,6 +108,15 @@ export class UpdateWebsiteDto {
   @IsOptional() @IsString() @Length(1, 160) displayName?: string
   @IsOptional() @IsString() @Length(1, 2048) url?: string
   @Type(() => Number) @IsInt() @Min(1) version!: number
+}
+
+export class CreateAuditDto {
+  @IsOptional() @IsEnum(AuditTriggerType) triggerType?: AuditTriggerType
+}
+
+export class ListAuditsDto {
+  @IsOptional() @IsUUID() cursor?: string
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(50) limit = 20
 }
 
 export class CreateLocationDto {
