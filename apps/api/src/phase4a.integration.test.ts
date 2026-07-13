@@ -11,6 +11,7 @@ import { AppModule } from './app.module.js'
 import { createApplication } from './app.js'
 import { setApiEnvironmentForTest } from './environment.js'
 import { hashPassword } from './security.js'
+import { WebsiteService } from './website.service.js'
 
 interface TestResponse {
   statusCode: number
@@ -31,6 +32,14 @@ class CookieJar {
   }
 }
 
+function errorCode(error: unknown): string | undefined {
+  if (typeof error !== 'object' || error === null || !('getResponse' in error)) return undefined
+  const response = (error as { getResponse(): unknown }).getResponse()
+  return typeof response === 'object' && response !== null && 'code' in response
+    ? String(response.code)
+    : undefined
+}
+
 describe.sequential('Phase 4A website registration integration', () => {
   const database = getDatabaseClient()
   const marker = `${String(Date.now())}-${Math.random().toString(16).slice(2)}`
@@ -47,6 +56,7 @@ describe.sequential('Phase 4A website registration integration', () => {
   let unrelatedBusinessId = ''
   let relationshipId = ''
   let websiteId = ''
+  let businessWebsiteId = ''
 
   beforeAll(async () => {
     setApiEnvironmentForTest({
@@ -248,11 +258,12 @@ describe.sequential('Phase 4A website registration integration', () => {
     const created = await request(
       'POST',
       '/api/v1/websites',
-      { url: 'https://business.example.test', displayName: 'Business site' },
+      { url: 'https://8.8.8.8', displayName: 'Business site' },
       businessJar,
       businessHeaders,
     )
     expect(created.statusCode, created.body).toBe(201)
+    businessWebsiteId = (created.json() as { id: string }).id
     const unrelatedWebsite = await database.website.create({
       data: {
         businessOrganizationId: unrelatedBusinessId,
@@ -289,5 +300,39 @@ describe.sequential('Phase 4A website registration integration', () => {
     )
     expect(invalidUrl.statusCode).toBe(400)
     expect(invalidUrl.body).toContain('INVALID_WEBSITE_URL')
+  })
+
+  it('prepares authorized website targets without external DNS and keeps private or cross-tenant targets blocked', async () => {
+    const websites = app.get(WebsiteService)
+    await expect(
+      websites.prepareOutboundTarget(
+        (await database.user.findUniqueOrThrow({ where: { email: businessEmail } })).id,
+        { businessId },
+        businessWebsiteId,
+      ),
+    ).resolves.toMatchObject({ current: { connections: [{ address: '8.8.8.8', port: 443 }] } })
+    const privateWebsite = await database.website.create({
+      data: {
+        businessOrganizationId: businessId,
+        url: 'http://127.0.0.1/',
+        normalizedUrl: 'http://127.0.0.1/',
+      },
+    })
+    await expect(
+      websites.prepareOutboundTarget(
+        (await database.user.findUniqueOrThrow({ where: { email: businessEmail } })).id,
+        { businessId },
+        privateWebsite.id,
+      ),
+    ).rejects.toSatisfy((error: unknown) => errorCode(error) === 'WEBSITE_TARGET_IP_FORBIDDEN')
+    await expect(
+      websites.prepareOutboundTarget(
+        (await database.user.findUniqueOrThrow({ where: { email: outsiderEmail } })).id,
+        { businessId },
+        businessWebsiteId,
+      ),
+    ).rejects.toSatisfy(
+      (error: unknown) => error instanceof Error && error.message === 'Organization not found',
+    )
   })
 })

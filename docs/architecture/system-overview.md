@@ -97,6 +97,14 @@ active-relationship cardinality, primary locations, coordinates, pricing, and ov
 Mailpit delivers local invitations. Redis and object storage remain infrastructure dependencies but
 Phase 3 introduces no website-audit queue or object workflow.
 
+## Phase 4B Outbound Security Boundary
+
+Website registration remains metadata-only. The API contains a reusable target validator and
+outbound-request policy for a future worker, but exposes no URL-fetch endpoint. The policy uses an
+injectable DNS resolver, validates all A/AAAA answers and exposed CNAME aliases, blocks unsafe IP
+ranges, and returns only validated-IP connection targets with original-host SNI/Host metadata.
+Actual crawling, socket use, redirect following, and response handling remain future work.
+
 ## Initial Technology Decisions
 
 - Monorepo: pnpm workspaces and Turborepo.

@@ -67,3 +67,18 @@ This threat model covers the planned multi-tenant SaaS platform, including brows
 - [Selected sensitive fields](../adr/0014-application-field-encryption.md) use AES-256-GCM with separately keyed HMAC-SHA-256 blind indexes for normalized email and phone.
 - [Platform support](../adr/0015-platform-support-access.md) has no MVP impersonation and no casual access to private tenant content.
 - [AI retention](../adr/0013-openai-provider-and-retention.md) excludes raw payload storage by default and never stores hidden reasoning.
+
+## Phase 4B Outbound Target Foundation
+
+Phase 4B validates a stored website target separately from its display and storage normalization. It
+accepts HTTP(S) only on ports 80 and 443; rejects credentials, localhost, unusual IP notation, and
+private, loopback, link-local, multicast, unspecified, reserved, special-use, metadata, and unsafe
+IPv4-mapped IPv6 addresses. Hostnames are resolved through an injectable resolver for both A and
+AAAA answers; every answer must be safe. A mixed public/private answer is rejected.
+
+The policy re-resolves every initial target and redirect, allows at most five redirects, blocks
+loops and HTTPS-to-HTTP downgrades, and returns connection instructions that use a validated IP
+while retaining the original hostname for SNI and Host. It performs no outbound request. A later
+crawler must resolve immediately before each socket connection, select only an address in that
+fresh validated set, use the supplied IP as the connect host, and rerun this policy on every
+redirect. This is a foundation, not a claim that validation alone prevents DNS rebinding.

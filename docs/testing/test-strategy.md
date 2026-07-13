@@ -80,7 +80,9 @@ pytest
 - Business client cannot read agency-internal notes. Implemented in Phase 3.
 - Agency member cannot access an unassigned client when restricted. Implemented in Phase 3.
 - Expired file URLs cannot be reused.
-- Audit endpoint blocks private, loopback, link-local, metadata, and reserved IPs.
+- Website outbound-target policy blocks private, loopback, link-local, metadata, multicast,
+  unspecified, reserved, special-use, and unsafe IPv4-mapped IPv6 addresses; validates all DNS
+  answers and redirects without real external DNS in unit tests. Implemented in Phase 4B.
 - Webhook replay does not duplicate payment changes.
 - Public forms are rate-limited.
 - Invalid roles and permissions are rejected. Implemented in Phase 2.

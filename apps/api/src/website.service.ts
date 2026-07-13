@@ -6,6 +6,7 @@ import { PermissionService } from './permission.service.js'
 import { normalizeWebsiteUrl } from './phase3-domain.js'
 import type { CreateWebsiteDto, UpdateWebsiteDto } from './phase3.dto.js'
 import type { RequestMetadata } from './request-context.js'
+import { OutboundRequestPolicy, type RedirectState } from './website-target-security.js'
 
 export interface WebsiteContextHeaders {
   businessId?: string
@@ -25,6 +26,7 @@ export class WebsiteService {
   constructor(
     @Inject(PermissionService) private readonly permissions: PermissionService,
     @Inject(AgencyClientService) private readonly clients: AgencyClientService,
+    @Inject(OutboundRequestPolicy) private readonly outboundPolicy: OutboundRequestPolicy,
   ) {}
 
   async list(userId: string, headers: WebsiteContextHeaders) {
@@ -43,6 +45,21 @@ export class WebsiteService {
     })
     if (!website) throw new NotFoundException('Website not found')
     return website
+  }
+
+  async prepareOutboundTarget(
+    userId: string,
+    headers: WebsiteContextHeaders,
+    websiteId: string,
+  ): Promise<RedirectState> {
+    const website = await this.get(userId, headers, websiteId)
+    if (!website.isActive)
+      throw new DomainError(
+        'WEBSITE_TARGET_INVALID',
+        'Website target is disabled',
+        HttpStatus.CONFLICT,
+      )
+    return this.outboundPolicy.begin(website.normalizedUrl)
   }
 
   async create(
