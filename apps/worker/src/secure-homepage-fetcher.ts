@@ -115,7 +115,11 @@ export interface HomepageResponse {
   connection: SafeConnection
 }
 
-export class SecureHomepageFetcher {
+export interface SecurePageFetcher {
+  fetch(url: string, signal?: AbortSignal): Promise<HomepageResponse>
+}
+
+export class SecureHomepageFetcher implements SecurePageFetcher {
   constructor(private readonly validator: SafeTargetValidator) {}
 
   async fetch(url: string, signal?: AbortSignal): Promise<HomepageResponse> {

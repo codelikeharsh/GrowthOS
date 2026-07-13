@@ -102,6 +102,9 @@ sequenceDiagram
 
 Phase 4C writes an `audit_runs` row, `outbox_events` row, and audit-log event in one transaction.
 The dispatcher publishes only audit, website, and organization UUIDs to `audit-orchestration`.
-Phase 4D1 consumes the job only when its audit is still queued, revalidates DNS immediately before
-each pinned-IP connection, and stores metadata for the registered homepage only. Multi-page crawling
-begins in Phase 4D2.
+Phase 4D2A consumes the job only when its audit is still queued, revalidates DNS immediately before
+each pinned-IP connection, and performs a bounded internal crawl: at most 10 pages, depth 2,
+concurrency 2, and 50 retained candidates. It follows only normalized same-approved-host HTTP(S)
+anchor URLs, strips fragments and common tracking parameters, and rejects credentials, custom ports,
+external hosts, and obvious destructive paths. A failed internal page becomes a safe page-level result
+and does not fail the whole audit; robots.txt and sitemap support remain pending.

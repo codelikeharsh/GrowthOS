@@ -1,7 +1,12 @@
 import type { AuditOrchestrationPayload } from '@growthos/config'
 import { AuditPageStatus, AuditRunStatus, getDatabaseClient } from '@growthos/db'
+import {
+  enqueueDiscoveredLinks,
+  discoverInternalLinks,
+  MAX_CRAWL_PAGES,
+} from './crawl-discovery.js'
 import { HomepageFetchError } from './secure-homepage-fetcher.js'
-import type { SecureHomepageFetcher } from './secure-homepage-fetcher.js'
+import type { HomepageResponse, SecurePageFetcher } from './secure-homepage-fetcher.js'
 
 interface AuditRecord {
   id: string
@@ -34,7 +39,7 @@ export interface AuditWorkerLogger {
 
 export class AuditOrchestrationConsumer {
   constructor(
-    private readonly fetcher: SecureHomepageFetcher,
+    private readonly fetcher: SecurePageFetcher,
     private readonly logger: AuditWorkerLogger,
     private readonly database: AuditWorkerDatabase = getDatabaseClient() as unknown as AuditWorkerDatabase,
   ) {}
@@ -78,53 +83,17 @@ export class AuditOrchestrationConsumer {
         ))
       )
         return
-      const response = await this.fetcher.fetch(audit.website.url)
+      const homepage = await this.fetcher.fetch(audit.website.url)
       if ((await this.status(audit.id)) !== AuditRunStatus.CRAWLING) return
-      const metadata = extractPageMetadata(response.body.toString('utf8'))
-      await this.database.$transaction(async (transaction) => {
-        const stillCrawling = await transaction.auditRun.updateMany({
-          where: { id: audit.id, status: AuditRunStatus.CRAWLING },
-          data: {
-            status: AuditRunStatus.ANALYZING,
-            pagesDiscovered: 1,
-            pagesProcessed: 1,
-            version: { increment: 1 },
-          },
-        })
-        if (!stillCrawling.count) return
-        await transaction.auditPage.upsert({
-          where: {
-            auditRunId_normalizedUrl: { auditRunId: audit.id, normalizedUrl: response.finalUrl },
-          },
-          create: {
-            auditRunId: audit.id,
-            url: response.finalUrl,
-            normalizedUrl: response.finalUrl,
-            canonicalUrl: metadata.canonicalUrl,
-            httpStatus: response.httpStatus,
-            contentType: response.contentType,
-            title: metadata.title,
-            metaDescription: metadata.metaDescription,
-            wordCount: metadata.wordCount,
-            loadDurationMs: response.durationMs,
-            status: AuditPageStatus.FETCHED,
-          },
-          update: {
-            canonicalUrl: metadata.canonicalUrl,
-            httpStatus: response.httpStatus,
-            contentType: response.contentType,
-            title: metadata.title,
-            metaDescription: metadata.metaDescription,
-            wordCount: metadata.wordCount,
-            loadDurationMs: response.durationMs,
-            status: AuditPageStatus.FETCHED,
-            errorCode: null,
-          },
-        })
+      await this.crawl(audit.id, homepage, audit.website.url)
+      if ((await this.status(audit.id)) !== AuditRunStatus.CRAWLING) return
+      await this.database.auditRun.updateMany({
+        where: { id: audit.id, status: AuditRunStatus.CRAWLING },
+        data: { status: AuditRunStatus.ANALYZING, version: { increment: 1 } },
       })
       this.logger.info(
-        { ...context, durationMs: response.durationMs },
-        'audit homepage fetched safely',
+        { ...context, durationMs: homepage.durationMs },
+        'audit bounded internal crawl completed safely',
       )
     } catch (error) {
       const code = error instanceof HomepageFetchError ? error.code : 'AUDIT_PAGE_FETCH_FAILED'
@@ -161,6 +130,112 @@ export class AuditOrchestrationConsumer {
       },
     })
     return result.count === 1
+  }
+
+  private async crawl(
+    auditId: string,
+    homepage: HomepageResponse,
+    requestedUrl: string,
+  ): Promise<void> {
+    const queue = [] as { url: string; depth: number }[]
+    const seen = new Set([homepage.finalUrl])
+    let processed = 0
+    await this.persistSuccess(auditId, requestedUrl, homepage)
+    processed += 1
+    enqueueDiscoveredLinks(
+      queue,
+      seen,
+      discoverInternalLinks(
+        homepage.body.toString('utf8'),
+        homepage.finalUrl,
+        new URL(homepage.finalUrl).hostname,
+      ),
+      1,
+    )
+    while (queue.length && processed < MAX_CRAWL_PAGES) {
+      if ((await this.status(auditId)) !== AuditRunStatus.CRAWLING) return
+      const candidate = queue.shift()
+      if (!candidate) break
+      try {
+        const response = await this.fetcher.fetch(candidate.url)
+        if ((await this.status(auditId)) !== AuditRunStatus.CRAWLING) return
+        await this.persistSuccess(auditId, candidate.url, response)
+        enqueueDiscoveredLinks(
+          queue,
+          seen,
+          discoverInternalLinks(
+            response.body.toString('utf8'),
+            response.finalUrl,
+            new URL(homepage.finalUrl).hostname,
+          ),
+          candidate.depth + 1,
+        )
+      } catch (error) {
+        if ((await this.status(auditId)) !== AuditRunStatus.CRAWLING) return
+        await this.persistFailure(
+          auditId,
+          candidate.url,
+          error instanceof HomepageFetchError ? error.code : 'AUDIT_PAGE_FETCH_FAILED',
+        )
+      }
+      processed += 1
+    }
+    await this.database.auditRun.updateMany({
+      where: { id: auditId, status: AuditRunStatus.CRAWLING },
+      data: { pagesDiscovered: seen.size, pagesProcessed: processed, version: { increment: 1 } },
+    })
+  }
+
+  private async persistSuccess(
+    auditId: string,
+    requestedUrl: string,
+    response: HomepageResponse,
+  ): Promise<void> {
+    const metadata = extractPageMetadata(response.body.toString('utf8'))
+    await this.database.auditPage.upsert({
+      where: {
+        auditRunId_normalizedUrl: { auditRunId: auditId, normalizedUrl: response.finalUrl },
+      },
+      create: {
+        auditRunId: auditId,
+        url: requestedUrl,
+        normalizedUrl: response.finalUrl,
+        canonicalUrl: metadata.canonicalUrl,
+        httpStatus: response.httpStatus,
+        contentType: response.contentType,
+        title: metadata.title,
+        metaDescription: metadata.metaDescription,
+        wordCount: metadata.wordCount,
+        loadDurationMs: response.durationMs,
+        status: AuditPageStatus.FETCHED,
+      },
+      update: {
+        url: requestedUrl,
+        canonicalUrl: metadata.canonicalUrl,
+        httpStatus: response.httpStatus,
+        contentType: response.contentType,
+        title: metadata.title,
+        metaDescription: metadata.metaDescription,
+        wordCount: metadata.wordCount,
+        loadDurationMs: response.durationMs,
+        status: AuditPageStatus.FETCHED,
+        errorCode: null,
+      },
+    })
+  }
+
+  private async persistFailure(auditId: string, url: string, errorCode: string): Promise<void> {
+    await this.database.auditPage.upsert({
+      where: { auditRunId_normalizedUrl: { auditRunId: auditId, normalizedUrl: url } },
+      create: {
+        auditRunId: auditId,
+        url,
+        normalizedUrl: url,
+        status: AuditPageStatus.FAILED,
+        errorCode,
+      },
+      update: { status: AuditPageStatus.FAILED, errorCode },
+    })
   }
 }
 
