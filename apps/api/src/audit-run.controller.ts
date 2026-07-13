@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Headers,
+  Res,
   Inject,
   Param,
   Post,
@@ -12,6 +13,7 @@ import {
   UseGuards,
 } from '@nestjs/common'
 import type { FastifyRequest } from 'fastify'
+import type { FastifyReply } from 'fastify'
 import { AuthenticationGuard } from './authentication.guard.js'
 import { AuditRunService } from './audit-run.service.js'
 import { CsrfGuard } from './csrf.guard.js'
@@ -76,6 +78,43 @@ export class AuditRunController {
     },
   ) {
     return this.audits.findings(auth.userId, this.context(headers), websiteId, auditId, query)
+  }
+  @Get(':auditId/report')
+  report(
+    @CurrentAuth() auth: AuthContext,
+    @Param('websiteId') websiteId: string,
+    @Param('auditId') auditId: string,
+    @Headers() headers: Record<string, string>,
+  ) {
+    return this.audits.report(auth.userId, this.context(headers), websiteId, auditId)
+  }
+  @Get(':auditId/events')
+  async events(
+    @CurrentAuth() auth: AuthContext,
+    @Param('websiteId') websiteId: string,
+    @Param('auditId') auditId: string,
+    @Headers() headers: Record<string, string>,
+    @Res() reply: FastifyReply,
+  ) {
+    await this.audits.get(auth.userId, this.context(headers), websiteId, auditId)
+    reply.raw.writeHead(200, {
+      'content-type': 'text/event-stream',
+      'cache-control': 'no-cache',
+      connection: 'keep-alive',
+    })
+    const send = async (): Promise<void> => {
+      const audit = await this.audits.get(auth.userId, this.context(headers), websiteId, auditId)
+      reply.raw.write(
+        `event: progress\ndata: ${JSON.stringify({ status: audit.status, pagesDiscovered: audit.pagesDiscovered, pagesProcessed: audit.pagesProcessed })}\n\n`,
+      )
+    }
+    await send()
+    const timer = setInterval(() => {
+      void send()
+    }, 2_000)
+    reply.raw.on('close', () => {
+      clearInterval(timer)
+    })
   }
   @Delete(':auditId')
   @UseGuards(CsrfGuard)

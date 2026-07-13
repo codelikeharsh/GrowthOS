@@ -1,23 +1,14 @@
-import {
-  auditOrchestrationQueueName,
-  parseEnvironment,
-  workerEnvironmentSchema,
-  type AuditOrchestrationPayload,
-} from '@growthos/config'
+import { parseEnvironment, workerEnvironmentSchema } from '@growthos/config'
 import { createLogger } from '@growthos/logger'
-import { AuditOrchestrationConsumer } from './audit-orchestration.js'
-import { WorkerRuntime } from './runtime.js'
+import { bootstrapWorker } from './bootstrap.js'
 import { SafeTargetValidator, SecureHomepageFetcher } from './secure-homepage-fetcher.js'
 
 const environment = parseEnvironment(workerEnvironmentSchema, process.env)
 const logger = createLogger('worker', environment.LOG_LEVEL)
-const runtime = new WorkerRuntime(environment, logger)
-const consumer = new AuditOrchestrationConsumer(
-  new SecureHomepageFetcher(new SafeTargetValidator()),
+const runtime = bootstrapWorker({
+  environment,
   logger,
-)
-runtime.registerProcessor<AuditOrchestrationPayload>(auditOrchestrationQueueName, async (job) => {
-  await consumer.process(job.data, job.id)
+  fetcher: new SecureHomepageFetcher(new SafeTargetValidator()),
 })
 
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {

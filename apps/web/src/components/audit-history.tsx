@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { apiRequest } from '../lib/api'
+import { apiBaseUrl, apiRequest } from '../lib/api'
 import type { WebsiteContext } from './website-manager'
 
 interface Audit {
@@ -149,7 +149,67 @@ export function AuditStatus({
       auditPage?: { normalizedUrl: string } | null
     }[]
   >([])
+  const [pages, setPages] = useState<
+    {
+      id: string
+      normalizedUrl: string
+      status: string
+      httpStatus?: number | null
+      errorCode?: string | null
+    }[]
+  >([])
+  const [severity, setSeverity] = useState('')
+  const [category, setCategory] = useState('')
   useEffect(() => {
+    const controller = new AbortController()
+    const terminal = new Set(['COMPLETED', 'PARTIAL', 'FAILED', 'CANCELLED'])
+    let fallback: ReturnType<typeof setInterval> | undefined
+    const refresh = (): void => {
+      void apiRequest<Audit>(`/websites/${websiteId}/audits/${auditId}`, {
+        headers: context.headers,
+      })
+        .then(setAudit)
+        .catch(() => undefined)
+    }
+    const stream = async (): Promise<void> => {
+      try {
+        const response = await fetch(
+          `${apiBaseUrl}/websites/${websiteId}/audits/${auditId}/events`,
+          { headers: context.headers, credentials: 'include', signal: controller.signal },
+        )
+        if (!response.ok || !response.body) throw new Error('SSE unavailable')
+        const reader = response.body.getReader()
+        const decoder = new TextDecoder()
+        let buffer = ''
+        while (!controller.signal.aborted) {
+          const next = await reader.read()
+          if (next.done) break
+          buffer += decoder.decode(next.value, { stream: true })
+          const events = buffer.split('\n\n')
+          buffer = events.pop() ?? ''
+          for (const event of events) {
+            const data = event
+              .split('\n')
+              .find((line) => line.startsWith('data: '))
+              ?.slice(6)
+            if (!data) continue
+            const progress = JSON.parse(data) as Pick<
+              Audit,
+              'status' | 'pagesDiscovered' | 'pagesProcessed'
+            >
+            setAudit((current) => (current ? { ...current, ...progress } : current))
+            if (terminal.has(progress.status)) {
+              controller.abort()
+              return
+            }
+          }
+        }
+        if (!controller.signal.aborted) fallback = setInterval(refresh, 5_000)
+      } catch {
+        if (!controller.signal.aborted) fallback = setInterval(refresh, 5_000)
+      }
+    }
+    void stream()
     apiRequest<Audit>(`/websites/${websiteId}/audits/${auditId}`, { headers: context.headers })
       .then(setAudit)
       .catch((cause: unknown) =>
@@ -160,6 +220,15 @@ export function AuditStatus({
     })
       .then(setFindings)
       .catch(() => setFindings([]))
+    apiRequest<{ pages: typeof pages }>(`/websites/${websiteId}/audits/${auditId}/report`, {
+      headers: context.headers,
+    })
+      .then((report) => setPages(report.pages))
+      .catch(() => setPages([]))
+    return () => {
+      controller.abort()
+      if (fallback) clearInterval(fallback)
+    }
   }, [auditId, websiteId, context.headers])
   if (error)
     return (
@@ -197,24 +266,66 @@ export function AuditStatus({
         ) : null}
       </dl>
       <h3 className="mt-6 text-lg font-semibold">Findings</h3>
+      <div className="mt-2 flex gap-2">
+        <select
+          aria-label="Severity"
+          value={severity}
+          onChange={(event) => setSeverity(event.target.value)}
+        >
+          <option value="">All severities</option>
+          {['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].map((value) => (
+            <option key={value}>{value}</option>
+          ))}
+        </select>
+        <select
+          aria-label="Category"
+          value={category}
+          onChange={(event) => setCategory(event.target.value)}
+        >
+          <option value="">All categories</option>
+          {['TECHNICAL', 'SEO', 'CONTENT', 'BROKEN_LINK'].map((value) => (
+            <option key={value}>{value}</option>
+          ))}
+        </select>
+      </div>
       {findings.length ? (
         <ul className="mt-3 space-y-3">
-          {findings.map((finding) => (
-            <li className="rounded border p-3 text-sm" key={finding.id}>
-              <strong>
-                {finding.severity} · {finding.category}: {finding.title}
-              </strong>
-              <p>{finding.auditPage?.normalizedUrl ?? 'Audit-wide'}</p>
-              <p>{finding.description}</p>
-              <p className="mt-1">
-                <span className="font-semibold">Suggested action:</span>{' '}
-                {finding.recommendationTemplate}
-              </p>
+          {findings
+            .filter(
+              (finding) =>
+                (!severity || finding.severity === severity) &&
+                (!category || finding.category === category),
+            )
+            .map((finding) => (
+              <li className="rounded border p-3 text-sm" key={finding.id}>
+                <strong>
+                  {finding.severity} · {finding.category}: {finding.title}
+                </strong>
+                <p>{finding.auditPage?.normalizedUrl ?? 'Audit-wide'}</p>
+                <p>{finding.description}</p>
+                <p className="mt-1">
+                  <span className="font-semibold">Suggested action:</span>{' '}
+                  {finding.recommendationTemplate}
+                </p>
+              </li>
+            ))}
+        </ul>
+      ) : (
+        <p className="mt-3 text-sm">No deterministic findings recorded.</p>
+      )}
+      <h3 className="mt-6 text-lg font-semibold">Crawled pages</h3>
+      {pages.length ? (
+        <ul className="mt-2 space-y-2 text-sm">
+          {pages.map((page) => (
+            <li className="rounded border p-2" key={page.id}>
+              <strong>{page.status}</strong> · {page.normalizedUrl}
+              {page.httpStatus ? ` (${page.httpStatus})` : ''}
+              {page.errorCode ? ` — ${page.errorCode}` : ''}
             </li>
           ))}
         </ul>
       ) : (
-        <p className="mt-3 text-sm">No deterministic findings recorded.</p>
+        <p className="mt-2 text-sm">No crawled pages recorded.</p>
       )}
     </section>
   )

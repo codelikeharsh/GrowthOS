@@ -170,6 +170,18 @@ export class AuditRunService {
     })
   }
 
+  async report(userId: string, headers: WebsiteContextHeaders, websiteId: string, auditId: string) {
+    const audit = await this.get(userId, headers, websiteId, auditId)
+    const [pages, findings] = await Promise.all([
+      this.database.auditPage.findMany({
+        where: { auditRunId: auditId },
+        orderBy: { createdAt: 'asc' },
+      }),
+      this.findings(userId, headers, websiteId, auditId, {}),
+    ])
+    return { audit, pages, findings }
+  }
+
   async cancel(
     userId: string,
     headers: WebsiteContextHeaders,

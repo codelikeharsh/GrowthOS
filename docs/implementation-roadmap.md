@@ -89,8 +89,9 @@ Validation: see [Phase 3 acceptance validation](testing/phase-3-validation.md).
 
 ## Phase 4: Website Management And Audit Foundation
 
-Status: Phase 4A–4E1 complete. Phase 4E1 acceptance validation passed on 2026-07-13; deterministic
-findings from collected page metadata complete the current crawl-to-analysis lifecycle.
+Status: complete. Phase 4 acceptance includes secure bounded crawling, deterministic findings, live
+authorized progress reporting, and persisted-data audit reports. Homepage screenshots are deferred
+until a future production-ready pinned-IP browser capture and private-storage implementation exists.
 
 - Phase 4A: business-owned website registration, tenant-aware agency/business management, storage
   URL normalization, and safe disablement.

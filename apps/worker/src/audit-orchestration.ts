@@ -38,9 +38,7 @@ export interface AuditWorkerDatabase {
   }
   auditPage: {
     upsert(args: object): Promise<unknown>
-    findMany(
-      args: object,
-    ): Promise<
+    findMany(args: object): Promise<
       {
         id: string
         normalizedUrl: string
