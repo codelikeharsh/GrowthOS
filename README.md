@@ -4,10 +4,9 @@ zero2one Growth OS is a planned multi-tenant operating system for digital servic
 
 ## Current phase
 
-Phases 0 through 3 are complete. The repository now includes the validated platform and identity
-foundation plus agency-client relationships, atomic client onboarding, business profiles,
-locations, services, hours, social links, invitation-based client access, permission-aware notes,
-and functional agency and business UI routes. Phase 4 has not started.
+Phases 0 through 4 are complete. The repository includes the platform, identity and tenant
+foundation, agency-client workflows, secure bounded website audits, deterministic findings, and
+tenant-authorized audit reports with live progress. Homepage screenshots are explicitly deferred.
 
 ## Architecture
 
@@ -36,9 +35,6 @@ The preinstall check rejects unsupported Node and pnpm major versions while the 
 
 ```bash
 cp .env.example .env
-set -a
-source .env
-set +a
 corepack prepare pnpm@11.7.0 --activate
 pnpm install --frozen-lockfile
 python3 -m venv services/ai-service/.venv
@@ -50,8 +46,9 @@ pnpm db:migrate:deploy
 pnpm dev
 ```
 
-All values in `.env.example` are local-development values. OpenAI, Sentry, and OpenTelemetry
-variables remain optional. Do not commit `.env` or real credentials.
+`pnpm dev` loads the root `.env` automatically for web, API, worker, and the AI service. All values
+in `.env.example` are local-development values. OpenAI, Sentry, and OpenTelemetry variables remain
+optional. Do not commit `.env` or real credentials.
 
 ## Local infrastructure
 
@@ -66,7 +63,8 @@ docker compose down -v
 **Warning:** `docker compose down -v` permanently deletes the local PostgreSQL, Redis, MinIO, and Mailpit development data volumes.
 
 The Compose credentials are deliberately non-default but remain local-only. They are not production secrets.
-If port 5432 is already occupied, set `POSTGRES_PORT` and use the same port in `DATABASE_URL`.
+The default published PostgreSQL port is `55432`, which avoids a host PostgreSQL service commonly
+using `5432`. Keep `POSTGRES_PORT` and `DATABASE_URL` aligned if you choose a different port.
 
 ## Development and quality commands
 
@@ -133,4 +131,10 @@ opening hours, social links, named permissions, and database-enforced partial/ex
 - No worker product queue is registered.
 - Terraform implementation is deferred to production hardening.
 
-The next permitted roadmap boundary is Phase 4: website management and audit foundation.
+## Deployment environment
+
+Do not deploy local `.env` values. The deployment platform must supply a managed `DATABASE_URL`
+and managed `REDIS_URL`. Configure `NEXT_PUBLIC_API_URL` with the deployed API base URL,
+`API_CORS_ORIGINS` with the deployed web origin, and `PUBLIC_WEB_URL` with that same web origin.
+Use HTTPS and secure production session cookies; do not reuse local PostgreSQL, Redis, MinIO, or
+session values in production. No platform-specific credentials are stored in this repository.
