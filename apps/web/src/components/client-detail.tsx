@@ -194,6 +194,7 @@ export function ClientDetail({ relationshipId }: Props) {
         <Link href={`${base}/services`}>Services</Link>
         <Link href={`${base}/hours`}>Hours</Link>
         <Link href={`${base}/social-links`}>Social links</Link>
+        <Link href={`${base}/websites`}>Websites</Link>
         <Link href={`${base}/notes`}>Notes</Link>
         <Link href={`${base}/members`}>Members</Link>
       </nav>

@@ -179,6 +179,7 @@ model Organization {
   businessServices      BusinessService[]
   businessHours         BusinessHour[]
   businessSocialLinks   BusinessSocialLink[]
+  websites              Website[]
 
   @@map("organizations")
 }
@@ -335,6 +336,23 @@ model BusinessSocialLink {
 
   @@index([businessOrganizationId, displayOrder])
   @@map("business_social_links")
+}
+
+model Website {
+  id                     String       @id @default(uuid()) @db.Uuid
+  businessOrganizationId String       @map("business_organization_id") @db.Uuid
+  displayName            String?      @map("display_name") @db.VarChar(160)
+  url                    String       @db.VarChar(2048)
+  normalizedUrl          String       @map("normalized_url") @db.VarChar(2048)
+  isActive               Boolean      @default(true) @map("is_active")
+  version                Int          @default(1)
+  createdAt              DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  businessOrganization   Organization @relation(fields: [businessOrganizationId], references: [id], onDelete: Restrict)
+
+  @@unique([businessOrganizationId, normalizedUrl])
+  @@index([businessOrganizationId, isActive, createdAt])
+  @@map("websites")
 }
 
 model OrganizationMember {

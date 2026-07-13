@@ -98,6 +98,17 @@ export class UpdateBusinessProfileDto {
   @Type(() => Number) @IsInt() @Min(1) version!: number
 }
 
+export class CreateWebsiteDto {
+  @IsOptional() @IsString() @Length(1, 160) displayName?: string
+  @IsString() @Length(1, 2048) url!: string
+}
+
+export class UpdateWebsiteDto {
+  @IsOptional() @IsString() @Length(1, 160) displayName?: string
+  @IsOptional() @IsString() @Length(1, 2048) url?: string
+  @Type(() => Number) @IsInt() @Min(1) version!: number
+}
+
 export class CreateLocationDto {
   @IsString() @Length(1, 160) name!: string
   @IsEnum(BusinessLocationType) locationType!: BusinessLocationType

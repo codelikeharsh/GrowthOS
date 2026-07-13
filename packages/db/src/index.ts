@@ -30,6 +30,7 @@ export type {
   BusinessService,
   BusinessHour,
   BusinessSocialLink,
+  Website,
 } from '../generated/client/index.js'
 
 let client: PrismaClient | undefined

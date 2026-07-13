@@ -84,6 +84,27 @@ export function normalizeSocialUrl(platform: BusinessSocialPlatform, input: stri
   return url.toString()
 }
 
+export function normalizeWebsiteUrl(input: string): string {
+  let url: URL
+  try {
+    url = new URL(input.trim())
+  } catch {
+    throw new Error('Website URL must be a valid absolute URL')
+  }
+  if (!['http:', 'https:'].includes(url.protocol) || !url.hostname)
+    throw new Error('Website URL must use HTTP or HTTPS')
+  if (url.username || url.password) throw new Error('Website URL must not include credentials')
+  url.protocol = url.protocol.toLowerCase()
+  url.hostname = url.hostname.toLowerCase()
+  url.hash = ''
+  if (
+    (url.protocol === 'http:' && url.port === '80') ||
+    (url.protocol === 'https:' && url.port === '443')
+  )
+    url.port = ''
+  return url.toString()
+}
+
 export function noteVisibilitiesForBusiness(): AgencyClientNoteVisibility[] {
   return [AgencyClientNoteVisibility.CLIENT_VISIBLE]
 }

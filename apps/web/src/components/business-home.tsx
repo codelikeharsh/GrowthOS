@@ -22,6 +22,7 @@ export function BusinessHome() {
         <Link href="/app/business/services">Services</Link>
         <Link href="/app/business/hours">Hours</Link>
         <Link href="/app/business/social-links">Social links</Link>
+        <Link href="/app/business/websites">Websites</Link>
         <Link href="/app/business/relationship">Agency relationship</Link>
       </nav>
     </div>
