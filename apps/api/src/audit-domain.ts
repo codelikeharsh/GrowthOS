@@ -18,9 +18,17 @@ export function canCancelAudit(status: AuditRunStatus): boolean {
 
 export function canTransitionAudit(from: AuditRunStatus, to: AuditRunStatus): boolean {
   if (from === AuditRunStatus.QUEUED)
-    return to === AuditRunStatus.CANCELLED || to === AuditRunStatus.FAILED
+    return (
+      to === AuditRunStatus.VALIDATING_TARGET ||
+      to === AuditRunStatus.CANCELLED ||
+      to === AuditRunStatus.FAILED
+    )
   if (from === AuditRunStatus.VALIDATING_TARGET)
-    return to === AuditRunStatus.FAILED || to === AuditRunStatus.CANCELLED
+    return (
+      to === AuditRunStatus.CRAWLING ||
+      to === AuditRunStatus.FAILED ||
+      to === AuditRunStatus.CANCELLED
+    )
   if (from === AuditRunStatus.CRAWLING)
     return (
       [

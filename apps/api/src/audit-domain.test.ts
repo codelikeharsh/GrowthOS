@@ -12,8 +12,11 @@ describe('audit lifecycle', () => {
     expect(canCancelAudit(AuditRunStatus.QUEUED)).toBe(true)
     expect(canCancelAudit(AuditRunStatus.FAILED)).toBe(false)
   })
-  it('defines future transitions without executing crawl stages', () => {
+  it('defines the bounded homepage worker transitions', () => {
     expect(canTransitionAudit(AuditRunStatus.QUEUED, AuditRunStatus.CANCELLED)).toBe(true)
+    expect(canTransitionAudit(AuditRunStatus.QUEUED, AuditRunStatus.VALIDATING_TARGET)).toBe(true)
+    expect(canTransitionAudit(AuditRunStatus.VALIDATING_TARGET, AuditRunStatus.CRAWLING)).toBe(true)
+    expect(canTransitionAudit(AuditRunStatus.CRAWLING, AuditRunStatus.ANALYZING)).toBe(true)
     expect(canTransitionAudit(AuditRunStatus.QUEUED, AuditRunStatus.COMPLETED)).toBe(false)
     expect(canTransitionAudit(AuditRunStatus.COMPLETED, AuditRunStatus.CANCELLED)).toBe(false)
   })

@@ -187,6 +187,9 @@ importers:
       '@growthos/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@growthos/db':
+        specifier: workspace:*
+        version: link:../../packages/db
       '@growthos/logger':
         specifier: workspace:*
         version: link:../../packages/logger

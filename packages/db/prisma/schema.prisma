@@ -105,6 +105,11 @@ enum AuditTriggerType {
   SCHEDULED
 }
 
+enum AuditPageStatus {
+  FETCHED
+  FAILED
+}
+
 model User {
   id                         String                     @id @default(uuid()) @db.Uuid
   email                      String                     @unique @db.VarChar(320)
@@ -402,11 +407,35 @@ model AuditRun {
   previousAuditRun   AuditRun?        @relation("PreviousAuditRun", fields: [previousAuditRunId], references: [id], onDelete: SetNull)
   subsequentAuditRuns AuditRun[]      @relation("PreviousAuditRun")
   outboxEvent        OutboxEvent?
+  pages              AuditPage[]
 
   @@unique([websiteId, idempotencyKey])
   @@index([organizationId, createdAt])
   @@index([websiteId, createdAt])
   @@map("audit_runs")
+}
+
+model AuditPage {
+  id              String          @id @default(uuid()) @db.Uuid
+  auditRunId      String          @map("audit_run_id") @db.Uuid
+  url             String          @db.VarChar(2048)
+  normalizedUrl   String          @map("normalized_url") @db.VarChar(2048)
+  canonicalUrl    String?         @map("canonical_url") @db.VarChar(2048)
+  httpStatus      Int?            @map("http_status")
+  contentType     String?         @map("content_type") @db.VarChar(255)
+  title           String?         @db.VarChar(1000)
+  metaDescription String?         @map("meta_description") @db.VarChar(2000)
+  wordCount       Int?            @map("word_count")
+  loadDurationMs  Int?            @map("load_duration_ms")
+  status          AuditPageStatus
+  errorCode       String?         @map("error_code") @db.VarChar(100)
+  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  auditRun        AuditRun        @relation(fields: [auditRunId], references: [id], onDelete: Cascade)
+
+  @@unique([auditRunId, normalizedUrl])
+  @@index([auditRunId, status])
+  @@map("audit_pages")
 }
 
 model OutboxEvent {

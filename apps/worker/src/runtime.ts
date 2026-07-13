@@ -58,7 +58,7 @@ export class WorkerRuntime {
     if (this.redis.status === 'wait') await this.redis.connect()
     await this.redis.ping()
     this.state = 'ready'
-    this.logger.info('worker infrastructure is ready; no product job processors are registered')
+    this.logger.info('worker infrastructure is ready')
   }
 
   registerProcessor<DataType>(queueName: string, processor: Processor<DataType>): Worker<DataType> {

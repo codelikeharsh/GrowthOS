@@ -4,6 +4,7 @@ export {
   AgencyClientNoteVisibility,
   AgencyClientRelationshipStatus,
   AuditRunStatus,
+  AuditPageStatus,
   AuditTriggerType,
   BusinessDayOfWeek,
   BusinessLocationType,
@@ -34,6 +35,7 @@ export type {
   BusinessSocialLink,
   Website,
   AuditRun,
+  AuditPage,
   OutboxEvent,
 } from '../generated/client/index.js'
 

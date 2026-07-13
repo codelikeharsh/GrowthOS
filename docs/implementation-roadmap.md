@@ -89,8 +89,9 @@ Validation: see [Phase 3 acceptance validation](testing/phase-3-validation.md).
 
 ## Phase 4: Website Management And Audit Foundation
 
-Status: Phase 4A–4C complete. Website registration, SSRF validation, and the audit
-lifecycle/outbox foundation are implemented; crawling and audit processing have not started.
+Status: Phase 4A–4D1 complete. Phase 4D1 acceptance validation passed on 2026-07-13; website
+registration, SSRF validation, audit lifecycle/outbox, and the bounded initial-homepage worker are
+implemented.
 
 - Phase 4A: business-owned website registration, tenant-aware agency/business management, storage
   URL normalization, and safe disablement.
@@ -98,8 +99,12 @@ lifecycle/outbox foundation are implemented; crawling and audit processing have 
   redirect validation, and validated-IP connection instructions for a later crawler.
 - Phase 4C: auditable queued audit runs, lifecycle validation, partial active-audit uniqueness,
   typed `audit-orchestration` outbox dispatch, and agency/business audit history UI.
-- Remaining Phase 4: audit creation, queue orchestration, crawler, page discovery/storage, progress,
-  findings, screenshots, and report UI.
+- Phase 4D1: queue consumer, conditional `QUEUED → VALIDATING_TARGET → CRAWLING → ANALYZING`
+  lifecycle, pinned-IP homepage GET, bounded HTML metadata storage in `audit_pages`, and safe failure
+  handling. Audits remain in `ANALYZING` until a later analysis consumer exists.
+- Remaining Phase 4: multi-page discovery/crawling, progress, findings, screenshots, and report UI.
+
+Validation: see [Phase 4D1 acceptance validation](testing/phase-4d1-validation.md).
 
 ## Phase 5: Advanced Website Analysis
 

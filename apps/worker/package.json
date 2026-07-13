@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@growthos/config": "workspace:*",
+    "@growthos/db": "workspace:*",
     "@growthos/logger": "workspace:*",
     "bullmq": "5.61.2",
     "ioredis": "5.8.1"

@@ -82,3 +82,12 @@ while retaining the original hostname for SNI and Host. It performs no outbound 
 crawler must resolve immediately before each socket connection, select only an address in that
 fresh validated set, use the supplied IP as the connect host, and rerun this policy on every
 redirect. This is a foundation, not a claim that validation alone prevents DNS rebinding.
+
+## Phase 4D1 Pinned Homepage Connection
+
+The worker uses Node 24's low-level HTTP(S) request API with a validated IP as the connection host,
+the registered hostname as the `Host` header and HTTPS SNI name, and a one-shot agent (`agent: false`).
+It uses GET only, has no cookie, credential, or proxy configuration, and revalidates every redirect.
+The current limits are five redirects, 10 seconds for the connection, 20 seconds total, and 2 MiB body
+size; only HTML is accepted and only extracted metadata is persisted. Phase 4D1 does not discover
+links or crawl additional pages.

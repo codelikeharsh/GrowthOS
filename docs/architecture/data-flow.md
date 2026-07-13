@@ -24,9 +24,8 @@ sequenceDiagram
   Web->>API: Subscribe to audit progress SSE
   Worker->>Queue: Claim job
   Worker->>DB: Mark status VALIDATING_TARGET
-  Worker->>Site: robots.txt, sitemap, safe crawl
-  Worker->>DB: Store audit_pages and progress
-  Worker->>Site: Analyze pages with bounded time and size
+  Worker->>Site: Validate then fetch initial homepage through pinned-IP connection
+  Worker->>DB: Store one audit_page metadata row and transition to ANALYZING
   Worker->>Storage: Store private screenshots
   Worker->>DB: Store metrics and findings
   Worker->>AI: Optional recommendation request after deterministic data is stable
@@ -102,5 +101,7 @@ sequenceDiagram
 ```
 
 Phase 4C writes an `audit_runs` row, `outbox_events` row, and audit-log event in one transaction.
-The dispatcher publishes only audit, website, and organization UUIDs to `audit-orchestration`; no
-crawler consumer is registered until Phase 4D.
+The dispatcher publishes only audit, website, and organization UUIDs to `audit-orchestration`.
+Phase 4D1 consumes the job only when its audit is still queued, revalidates DNS immediately before
+each pinned-IP connection, and stores metadata for the registered homepage only. Multi-page crawling
+begins in Phase 4D2.
