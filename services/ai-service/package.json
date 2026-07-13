@@ -4,16 +4,16 @@
   "private": true,
   "description": "Python FastAPI health, configuration, and AI-provider interface shell.",
   "scripts": {
-    "dev": "python3 -m uvicorn growthos_ai.main:app --reload --port ${AI_SERVICE_PORT:-8000}",
-    "build": "python3 -m compileall -q src",
-    "lint": "python3 -m ruff check .",
-    "format": "python3 -m ruff format .",
-    "format:check": "python3 -m ruff format --check .",
-    "typecheck": "python3 -m mypy src tests",
-    "test": "python3 -m pytest",
-    "test:unit": "python3 -m pytest -m 'not integration and not e2e'",
-    "test:integration": "python3 -m pytest -m integration",
-    "test:e2e": "python3 -m pytest -m e2e",
-    "clean": "python3 -c \"import shutil; [shutil.rmtree(p, ignore_errors=True) for p in ['.mypy_cache','.pytest_cache','.ruff_cache','build','dist']]\""
+    "dev": ".venv/bin/python -m uvicorn growthos_ai.main:app --reload --port ${AI_SERVICE_PORT:-8000}",
+    "build": ".venv/bin/python -m compileall -q src",
+    "lint": ".venv/bin/python -m ruff check .",
+    "format": ".venv/bin/python -m ruff format .",
+    "format:check": ".venv/bin/python -m ruff format --check .",
+    "typecheck": ".venv/bin/python -m mypy src tests",
+    "test": ".venv/bin/python -m pytest",
+    "test:unit": ".venv/bin/python -m pytest -m 'not integration and not e2e'",
+    "test:integration": ".venv/bin/python -m pytest -m integration",
+    "test:e2e": ".venv/bin/python -m pytest -m e2e",
+    "clean": ".venv/bin/python -c \"import shutil; [shutil.rmtree(p, ignore_errors=True) for p in ['.mypy_cache','.pytest_cache','.ruff_cache','build','dist']]\""
   }
 }

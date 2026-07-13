@@ -34,18 +34,14 @@ The preinstall check rejects unsupported Node and pnpm major versions while the 
 ## Local setup
 
 ```bash
-cp .env.example .env
-corepack prepare pnpm@11.7.0 --activate
-pnpm install --frozen-lockfile
-python3 -m venv services/ai-service/.venv
-services/ai-service/.venv/bin/pip install -e 'services/ai-service[dev]'
-source services/ai-service/.venv/bin/activate
 docker compose up -d
-pnpm db:generate
-pnpm db:migrate:deploy
+pnpm install --frozen-lockfile
 pnpm dev
 ```
 
+For a first checkout, create `.env` from `.env.example`, run `pnpm db:generate` and
+`pnpm db:migrate:deploy`, and create the AI virtual environment with
+`python3 -m venv services/ai-service/.venv && services/ai-service/.venv/bin/pip install -e 'services/ai-service[dev]'`.
 `pnpm dev` loads the root `.env` automatically for web, API, worker, and the AI service. All values
 in `.env.example` are local-development values. OpenAI, Sentry, and OpenTelemetry variables remain
 optional. Do not commit `.env` or real credentials.
