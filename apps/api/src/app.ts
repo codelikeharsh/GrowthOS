@@ -33,7 +33,11 @@ export async function createApplication(module = AppModule): Promise<NestFastify
 
   await app.register(cookie)
   await app.register(helmet)
-  app.enableCors({ credentials: true, origin: environment.API_CORS_ORIGINS })
+  app.enableCors({
+    credentials: true,
+    origin: environment.API_CORS_ORIGINS,
+    methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  })
   app.setGlobalPrefix('api', { exclude: [{ path: '/', method: RequestMethod.GET }] })
   app.enableVersioning({ type: VersioningType.URI })
   app.useGlobalPipes(

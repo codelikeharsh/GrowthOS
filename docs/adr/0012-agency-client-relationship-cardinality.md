@@ -2,7 +2,7 @@
 
 Date: 2026-07-13
 
-Status: Accepted for Phase 3
+Status: Accepted and implemented in Phase 3
 
 ## Context
 
@@ -12,7 +12,10 @@ The long-term product must support businesses working with multiple agencies, wh
 
 Keep an explicit many-to-many `agency_client_relationships` table and add an `is_primary` concept. During the MVP, a business may have only one active agency relationship at a time; inactive historical relationships remain valid.
 
-Plan a PostgreSQL partial unique index for active primary relationships. The Phase 3 service layer must also reject any second active relationship during the MVP, including a second non-primary active relationship. Future multi-agency support will relax the service rule without replacing the relationship table.
+The PostgreSQL migration installs a partial unique index on active relationships by business. The
+Phase 3 service maps database uniqueness races to the stable
+`AGENCY_CLIENT_RELATIONSHIP_ALREADY_ACTIVE` conflict. Historical pending, suspended, and terminated
+rows remain compatible with future multi-agency support without replacing the relationship table.
 
 ## Consequences
 

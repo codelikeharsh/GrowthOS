@@ -14,7 +14,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:unit": "vitest run --exclude '**/*.integration.test.ts'",
-    "test:integration": "vitest run src/dependencies.integration.test.ts src/phase2.integration.test.ts",
+    "test:integration": "vitest run src/dependencies.integration.test.ts src/phase2.integration.test.ts src/phase3.integration.test.ts",
     "test:e2e": "vitest run src/app.test.ts",
     "clean": "rimraf dist coverage"
   },

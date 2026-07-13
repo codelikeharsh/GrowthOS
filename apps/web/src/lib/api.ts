@@ -1,5 +1,15 @@
 export const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1'
 
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly code?: string,
+  ) {
+    super(message)
+    this.name = 'ApiError'
+  }
+}
+
 function getCookie(name: string): string | undefined {
   if (typeof document === 'undefined') return undefined
   const prefix = `${encodeURIComponent(name)}=`
@@ -21,7 +31,8 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
       ...init.headers,
     },
   })
-  const payload = (await response.json().catch(() => ({}))) as { message?: string }
-  if (!response.ok) throw new Error(payload.message ?? `Request failed (${response.status})`)
+  const payload = (await response.json().catch(() => ({}))) as { message?: string; code?: string }
+  if (!response.ok)
+    throw new ApiError(payload.message ?? `Request failed (${response.status})`, payload.code)
   return payload as T
 }

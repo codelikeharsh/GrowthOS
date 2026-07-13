@@ -27,6 +27,7 @@ import {
   slugifyOrganizationName,
 } from './security.js'
 import { type CreatedSession, SessionService } from './session.service.js'
+import { PermissionService } from './permission.service.js'
 
 const permissions = {
   read: 'organization.read',
@@ -47,6 +48,7 @@ export class OrganizationService {
     @Inject(MailService) private readonly mail: MailService,
     @Inject(SessionService) private readonly sessions: SessionService,
     @Inject(AuditService) private readonly audit: AuditService,
+    @Inject(PermissionService) private readonly permissionService: PermissionService,
   ) {}
 
   async create(
@@ -352,9 +354,15 @@ export class OrganizationService {
       if (actor.role.name !== RoleName.OWNER) throw new ForbiddenException()
       await this.assertNotLastOwner(organizationId)
     }
-    await this.database.organizationMember.update({
-      where: { id: member.id },
-      data: { status: MembershipStatus.REVOKED, revokedAt: new Date() },
+    const unassigned = await this.database.$transaction(async (transaction) => {
+      await transaction.organizationMember.update({
+        where: { id: member.id },
+        data: { status: MembershipStatus.REVOKED, revokedAt: new Date() },
+      })
+      return transaction.agencyClientRelationship.updateMany({
+        where: { agencyOrganizationId: organizationId, primaryAccountManagerUserId: member.userId },
+        data: { primaryAccountManagerUserId: null, version: { increment: 1 } },
+      })
     })
     await this.sessions.revokeAll(member.userId)
     await this.audit.record({
@@ -363,23 +371,14 @@ export class OrganizationService {
       organizationId,
       targetType: 'membership',
       targetId: member.id,
+      metadata: { accountManagerAssignmentsCleared: unassigned.count },
       request,
     })
     return { removed: true }
   }
 
   private async requirePermission(userId: string, organizationId: string, permission: string) {
-    const membership = await this.database.organizationMember.findFirst({
-      where: { organizationId, userId, status: MembershipStatus.ACTIVE },
-      include: {
-        role: { include: { permissions: { include: { permission: true } } } },
-      },
-    })
-    if (!membership) throw new NotFoundException('Organization not found')
-    if (!membership.role.permissions.some((item) => item.permission.name === permission)) {
-      throw new ForbiddenException('Insufficient organization permission')
-    }
-    return membership
+    return this.permissionService.require(userId, organizationId, permission)
   }
 
   private async getRole(name: RoleName) {

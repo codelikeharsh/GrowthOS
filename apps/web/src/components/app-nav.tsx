@@ -18,6 +18,8 @@ export function AppNav() {
       className="flex flex-wrap items-center gap-4 border-b border-[var(--line)] pb-5 text-sm font-semibold"
     >
       <Link href="/app">Workspace</Link>
+      <Link href="/app/clients">Clients</Link>
+      <Link href="/app/business">Business</Link>
       <Link href="/app/settings/profile">Profile</Link>
       <Link href="/app/settings/organization">Organization</Link>
       <Link href="/app/settings/members">Members</Link>

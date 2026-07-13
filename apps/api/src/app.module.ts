@@ -12,6 +12,11 @@ import { OrganizationService } from './organization.service.js'
 import { RateLimitService } from './rate-limit.service.js'
 import { SessionService } from './session.service.js'
 import { UserController } from './user.controller.js'
+import { AgencyClientController } from './agency-client.controller.js'
+import { AgencyClientService } from './agency-client.service.js'
+import { BusinessProfileController } from './business-profile.controller.js'
+import { BusinessProfileService } from './business-profile.service.js'
+import { PermissionService } from './permission.service.js'
 
 @Module({
   controllers: [
@@ -20,6 +25,8 @@ import { UserController } from './user.controller.js'
     UserController,
     OrganizationController,
     InvitationController,
+    AgencyClientController,
+    BusinessProfileController,
   ],
   providers: [
     DependenciesService,
@@ -31,6 +38,9 @@ import { UserController } from './user.controller.js'
     AuthenticationGuard,
     CsrfGuard,
     OrganizationService,
+    PermissionService,
+    AgencyClientService,
+    BusinessProfileService,
   ],
 })
 // NestJS modules are metadata-bearing classes by framework convention.

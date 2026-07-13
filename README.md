@@ -4,10 +4,10 @@ zero2one Growth OS is a planned multi-tenant operating system for digital servic
 
 ## Current phase
 
-Phases 0, 1, and 2 are complete. The repository now includes the validated platform foundation plus
-first-party authentication, PostgreSQL-backed opaque sessions, organisations, memberships,
-invitations, RBAC, tenant isolation, audit logging, and the minimal functional identity UI. Phase 3
-has not started.
+Phases 0 through 3 are complete. The repository now includes the validated platform and identity
+foundation plus agency-client relationships, atomic client onboarding, business profiles,
+locations, services, hours, social links, invitation-based client access, permission-aware notes,
+and functional agency and business UI routes. Phase 4 has not started.
 
 ## Architecture
 
@@ -118,18 +118,19 @@ API readiness returns HTTP 503 if PostgreSQL or Redis is unavailable. Mailpit su
 verification, reset, and invitation emails. AI readiness reports optional provider configuration
 without contacting OpenAI.
 
-## Identity data model
+## Identity and client data model
 
 The first product migration defines users, hashed opaque sessions and transient tokens,
 organisations, memberships, invitations, roles, permissions, and audit logs. A second migration
-installs the reviewed Phase 2 role/permission matrix and the live-invitation uniqueness rule. The
-generated Prisma client remains backend-only and ignored by Git.
+installs the reviewed Phase 2 role/permission matrix and the live-invitation uniqueness rule. A
+third migration adds relationships, visibility-filtered notes, profiles, locations, services, structured
+opening hours, social links, named permissions, and database-enforced partial/exclusion constraints.
 
 ## Known limitations
 
-- No product domains, crawler, lead capture, projects, billing, or payments.
+- No website/audit, crawler, lead capture, projects, billing, or payments.
 - No OpenAI call, provider adapter implementation, recommendation data, or fake AI response.
 - No worker product queue is registered.
 - Terraform implementation is deferred to production hardening.
 
-The next permitted roadmap boundary is Phase 3: agency-client relationships and business profiles.
+The next permitted roadmap boundary is Phase 4: website management and audit foundation.

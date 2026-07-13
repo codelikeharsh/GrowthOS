@@ -87,6 +87,16 @@ flowchart TB
 
 Only packages with a Phase 1 consumer exist. Contracts, authentication, storage, email, and tracker packages are deferred until their first real domain consumer.
 
+## Phase 3 Domain Boundary
+
+The API now owns agency-client lifecycle, assignment, invitation, business-profile/resource, and
+relationship-note operations. Agency requests carry the authenticated active agency organization;
+business requests carry the authenticated business organization. Shared business-resource access
+requires a verified agency/relationship pair. PostgreSQL constraints complement service checks for
+active-relationship cardinality, primary locations, coordinates, pricing, and overlapping hours.
+Mailpit delivers local invitations. Redis and object storage remain infrastructure dependencies but
+Phase 3 introduces no website-audit queue or object workflow.
+
 ## Initial Technology Decisions
 
 - Monorepo: pnpm workspaces and Turborepo.

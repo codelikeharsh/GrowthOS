@@ -8,17 +8,30 @@ Trusted zero2one Growth OS operator with platform-level visibility. Initially ca
 
 Owner of an agency organization. Can manage agency settings, invite staff, create client relationships, create business profiles, run audits, manage leads, create projects, assign staff, view agency analytics, manage billing, and configure integrations.
 
+In the implemented Phase 3 boundary, the agency owner has all 20 agency-client and business-profile
+permissions, including lifecycle transitions, account-manager assignment, internal notes, client
+invitations, and business-resource management. Later-module capabilities remain roadmap scope.
+
 ## Agency Administrator
 
 Operational agency administrator. Can perform most agency workflows but cannot delete or transfer the agency, access highly sensitive billing configuration unless granted, or promote owners without authorization.
+
+Phase 3 grants routine client management through named permissions; controllers do not infer access
+from this role name.
 
 ## Agency Member
 
 Agency staff member with access to assigned clients, leads, projects, content requests, files, and reports according to permissions and relationship-level constraints.
 
+For Phase 3, client access is limited to assigned relationships unless the member has the broader
+manager-assignment permission.
+
 ## Business Owner
 
 Owner of a business organization. Can manage business profile information, view reports and website findings, access assigned projects, submit content, approve deliverables, view enabled lead information, invite business staff, and view invoices and payment status.
+
+Phase 3 implements full management of the owner's business profile and resources plus client-visible
+relationship notes. Agency-internal notes are excluded by backend queries.
 
 ## Business Member
 

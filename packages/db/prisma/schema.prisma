@@ -38,23 +38,76 @@ enum RoleName {
   VIEWER
 }
 
+enum AgencyClientRelationshipStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  TERMINATED
+}
+
+enum AgencyClientNoteVisibility {
+  AGENCY_INTERNAL
+  CLIENT_VISIBLE
+}
+
+enum BusinessLocationType {
+  HEADQUARTERS
+  OFFICE
+  STORE
+  SERVICE_AREA
+  OTHER
+}
+
+enum BusinessPriceType {
+  FIXED
+  STARTING_FROM
+  RANGE
+  QUOTE_REQUIRED
+  FREE
+  NOT_DISPLAYED
+}
+
+enum BusinessDayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+enum BusinessSocialPlatform {
+  INSTAGRAM
+  FACEBOOK
+  LINKEDIN
+  YOUTUBE
+  X
+  WHATSAPP
+  GOOGLE_BUSINESS_PROFILE
+  OTHER
+}
+
 model User {
-  id                      String                   @id @default(uuid()) @db.Uuid
-  email                   String                   @unique @db.VarChar(320)
-  displayName             String                   @map("display_name") @db.VarChar(120)
-  passwordHash            String                   @map("password_hash") @db.VarChar(255)
-  status                  UserStatus               @default(PENDING_VERIFICATION)
-  emailVerifiedAt         DateTime?                @map("email_verified_at") @db.Timestamptz(6)
-  createdAt               DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt               DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
-  sessions                Session[]
-  emailVerificationTokens EmailVerificationToken[]
-  passwordResetTokens     PasswordResetToken[]
-  memberships             OrganizationMember[]
-  invitationsCreated      OrganizationInvitation[] @relation("InvitationCreator")
-  invitationsAccepted     OrganizationInvitation[] @relation("InvitationAcceptor")
-  auditLogs               AuditLog[]               @relation("AuditActor")
-  membersInvited          OrganizationMember[]     @relation("MemberInviter")
+  id                         String                     @id @default(uuid()) @db.Uuid
+  email                      String                     @unique @db.VarChar(320)
+  displayName                String                     @map("display_name") @db.VarChar(120)
+  passwordHash               String                     @map("password_hash") @db.VarChar(255)
+  status                     UserStatus                 @default(PENDING_VERIFICATION)
+  emailVerifiedAt            DateTime?                  @map("email_verified_at") @db.Timestamptz(6)
+  createdAt                  DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                  DateTime                   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  sessions                   Session[]
+  emailVerificationTokens    EmailVerificationToken[]
+  passwordResetTokens        PasswordResetToken[]
+  memberships                OrganizationMember[]
+  invitationsCreated         OrganizationInvitation[]   @relation("InvitationCreator")
+  invitationsAccepted        OrganizationInvitation[]   @relation("InvitationAcceptor")
+  auditLogs                  AuditLog[]                 @relation("AuditActor")
+  membersInvited             OrganizationMember[]       @relation("MemberInviter")
+  clientRelationshipsCreated AgencyClientRelationship[] @relation("RelationshipCreator")
+  clientRelationshipsManaged AgencyClientRelationship[] @relation("RelationshipManager")
+  agencyClientNotes          AgencyClientNote[]         @relation("NoteAuthor")
 
   @@map("users")
 }
@@ -110,17 +163,178 @@ model PasswordResetToken {
 }
 
 model Organization {
-  id          String                   @id @default(uuid()) @db.Uuid
-  name        String                   @db.VarChar(160)
-  slug        String                   @unique @db.VarChar(100)
-  type        OrganizationType
-  createdAt   DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
-  memberships OrganizationMember[]
-  invitations OrganizationInvitation[]
-  auditLogs   AuditLog[]
+  id                    String                     @id @default(uuid()) @db.Uuid
+  name                  String                     @db.VarChar(160)
+  slug                  String                     @unique @db.VarChar(100)
+  type                  OrganizationType
+  createdAt             DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime                   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  memberships           OrganizationMember[]
+  invitations           OrganizationInvitation[]
+  auditLogs             AuditLog[]
+  agencyRelationships   AgencyClientRelationship[] @relation("AgencyRelationships")
+  businessRelationships AgencyClientRelationship[] @relation("BusinessRelationships")
+  businessProfile       BusinessProfile?
+  businessLocations     BusinessLocation[]
+  businessServices      BusinessService[]
+  businessHours         BusinessHour[]
+  businessSocialLinks   BusinessSocialLink[]
 
   @@map("organizations")
+}
+
+model AgencyClientRelationship {
+  id                          String                         @id @default(uuid()) @db.Uuid
+  agencyOrganizationId        String                         @map("agency_organization_id") @db.Uuid
+  businessOrganizationId      String                         @map("business_organization_id") @db.Uuid
+  status                      AgencyClientRelationshipStatus @default(PENDING)
+  isPrimary                   Boolean                        @default(true) @map("is_primary")
+  primaryAccountManagerUserId String?                        @map("primary_account_manager_user_id") @db.Uuid
+  servicePlan                 String?                        @map("service_plan") @db.VarChar(120)
+  startedAt                   DateTime?                      @map("started_at") @db.Timestamptz(6)
+  endedAt                     DateTime?                      @map("ended_at") @db.Timestamptz(6)
+  createdByUserId             String                         @map("created_by_user_id") @db.Uuid
+  idempotencyKey              String?                        @map("idempotency_key") @db.VarChar(128)
+  version                     Int                            @default(1)
+  createdAt                   DateTime                       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                   DateTime                       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  agencyOrganization          Organization                   @relation("AgencyRelationships", fields: [agencyOrganizationId], references: [id], onDelete: Restrict)
+  businessOrganization        Organization                   @relation("BusinessRelationships", fields: [businessOrganizationId], references: [id], onDelete: Restrict)
+  primaryAccountManager       User?                          @relation("RelationshipManager", fields: [primaryAccountManagerUserId], references: [id], onDelete: SetNull)
+  createdBy                   User                           @relation("RelationshipCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  notes                       AgencyClientNote[]
+
+  @@unique([agencyOrganizationId, idempotencyKey])
+  @@index([agencyOrganizationId, status, createdAt])
+  @@index([businessOrganizationId, status])
+  @@index([agencyOrganizationId, primaryAccountManagerUserId, status])
+  @@map("agency_client_relationships")
+}
+
+model AgencyClientNote {
+  id             String                     @id @default(uuid()) @db.Uuid
+  relationshipId String                     @map("relationship_id") @db.Uuid
+  authorUserId   String                     @map("author_user_id") @db.Uuid
+  visibility     AgencyClientNoteVisibility
+  body           String                     @db.VarChar(5000)
+  editedAt       DateTime?                  @map("edited_at") @db.Timestamptz(6)
+  createdAt      DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime                   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  relationship   AgencyClientRelationship   @relation(fields: [relationshipId], references: [id], onDelete: Restrict)
+  author         User                       @relation("NoteAuthor", fields: [authorUserId], references: [id], onDelete: Restrict)
+
+  @@index([relationshipId, createdAt, id])
+  @@index([relationshipId, visibility, createdAt])
+  @@map("agency_client_notes")
+}
+
+model BusinessProfile {
+  id                String       @id @default(uuid()) @db.Uuid
+  organizationId    String       @unique @map("organization_id") @db.Uuid
+  legalName         String       @map("legal_name") @db.VarChar(160)
+  tradeName         String?      @map("trade_name") @db.VarChar(160)
+  shortDescription  String?      @map("short_description") @db.VarChar(300)
+  description       String?      @db.VarChar(5000)
+  industry          String?      @db.VarChar(120)
+  phone             String?      @db.VarChar(32)
+  email             String?      @db.VarChar(320)
+  websiteDisplayUrl String?      @map("website_display_url") @db.VarChar(2048)
+  timezone          String       @default("UTC") @db.VarChar(100)
+  currency          String       @default("USD") @db.Char(3)
+  countryCode       String       @default("US") @map("country_code") @db.Char(2)
+  primaryLanguage   String       @default("en") @map("primary_language") @db.VarChar(20)
+  logoFileId        String?      @map("logo_file_id") @db.Uuid
+  version           Int          @default(1)
+  createdAt         DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@map("business_profiles")
+}
+
+model BusinessLocation {
+  id                     String               @id @default(uuid()) @db.Uuid
+  businessOrganizationId String               @map("business_organization_id") @db.Uuid
+  name                   String               @db.VarChar(160)
+  locationType           BusinessLocationType @default(OTHER) @map("location_type")
+  addressLine1           String?              @map("address_line_1") @db.VarChar(200)
+  addressLine2           String?              @map("address_line_2") @db.VarChar(200)
+  city                   String?              @db.VarChar(120)
+  state                  String?              @db.VarChar(120)
+  postalCode             String?              @map("postal_code") @db.VarChar(32)
+  countryCode            String               @map("country_code") @db.Char(2)
+  latitude               Decimal?             @db.Decimal(9, 6)
+  longitude              Decimal?             @db.Decimal(9, 6)
+  phone                  String?              @db.VarChar(32)
+  email                  String?              @db.VarChar(320)
+  isPrimary              Boolean              @default(false) @map("is_primary")
+  isActive               Boolean              @default(true) @map("is_active")
+  version                Int                  @default(1)
+  createdAt              DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+  businessOrganization   Organization         @relation(fields: [businessOrganizationId], references: [id], onDelete: Restrict)
+
+  @@index([businessOrganizationId, isActive, createdAt])
+  @@map("business_locations")
+}
+
+model BusinessService {
+  id                     String            @id @default(uuid()) @db.Uuid
+  businessOrganizationId String            @map("business_organization_id") @db.Uuid
+  name                   String            @db.VarChar(160)
+  slug                   String            @db.VarChar(100)
+  shortDescription       String?           @map("short_description") @db.VarChar(300)
+  description            String?           @db.VarChar(5000)
+  priceType              BusinessPriceType @map("price_type")
+  startingPriceMinor     Int?              @map("starting_price_minor")
+  maximumPriceMinor      Int?              @map("maximum_price_minor")
+  currency               String?           @db.Char(3)
+  durationMinutes        Int?              @map("duration_minutes")
+  isActive               Boolean           @default(true) @map("is_active")
+  isFeatured             Boolean           @default(false) @map("is_featured")
+  displayOrder           Int               @default(0) @map("display_order")
+  version                Int               @default(1)
+  createdAt              DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  businessOrganization   Organization      @relation(fields: [businessOrganizationId], references: [id], onDelete: Restrict)
+
+  @@unique([businessOrganizationId, slug])
+  @@index([businessOrganizationId, isActive, displayOrder])
+  @@map("business_services")
+}
+
+model BusinessHour {
+  id                     String            @id @default(uuid()) @db.Uuid
+  businessOrganizationId String            @map("business_organization_id") @db.Uuid
+  dayOfWeek              BusinessDayOfWeek @map("day_of_week")
+  opensAtMinutes         Int?              @map("opens_at_minutes")
+  closesAtMinutes        Int?              @map("closes_at_minutes")
+  isClosed               Boolean           @default(false) @map("is_closed")
+  displayOrder           Int               @default(0) @map("display_order")
+  createdAt              DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  businessOrganization   Organization      @relation(fields: [businessOrganizationId], references: [id], onDelete: Restrict)
+
+  @@unique([businessOrganizationId, dayOfWeek, displayOrder])
+  @@index([businessOrganizationId, dayOfWeek])
+  @@map("business_hours")
+}
+
+model BusinessSocialLink {
+  id                     String                 @id @default(uuid()) @db.Uuid
+  businessOrganizationId String                 @map("business_organization_id") @db.Uuid
+  platform               BusinessSocialPlatform
+  url                    String                 @db.VarChar(2048)
+  displayLabel           String?                @map("display_label") @db.VarChar(120)
+  isPrimary              Boolean                @default(false) @map("is_primary")
+  displayOrder           Int                    @default(0) @map("display_order")
+  version                Int                    @default(1)
+  createdAt              DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
+  businessOrganization   Organization           @relation(fields: [businessOrganizationId], references: [id], onDelete: Restrict)
+
+  @@index([businessOrganizationId, displayOrder])
+  @@map("business_social_links")
 }
 
 model OrganizationMember {

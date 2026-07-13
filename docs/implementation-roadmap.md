@@ -69,7 +69,23 @@ Validation: see [Phase 2 acceptance validation](testing/phase-2-validation.md).
 
 ## Phase 3: Agency-Client Relationships And Business Profiles
 
-Deliver agency dashboard foundation, business client creation, relationship records, business profile, locations, services, hours, social links, client invitation, and permission-aware UI.
+Status: complete. Acceptance validation passed on 2026-07-13, including upgrade and fresh-database
+migrations, PostgreSQL constraints, tenant isolation, client invitation, note visibility, and the
+required 20-step Chromium journey.
+
+Delivered:
+
+- Audited agency-client relationships with the approved lifecycle and one-active-agency MVP rule.
+- Atomic agency-led business creation with idempotency and post-commit owner invitation delivery.
+- Business profiles, locations, integer-minor-unit services, non-overlapping hours, and social links.
+- Named Phase 3 permissions, assigned-client restrictions, active-relationship write rules, and
+  business self-management without internal-note leakage.
+- Optimistic concurrency, stable domain error codes, bounded client/note listings, and safe tenant
+  context resolution.
+- Agency and business browser routes using shared React Hook Form and Zod components.
+- Docker-backed integration coverage and the complete agency-to-client browser journey.
+
+Validation: see [Phase 3 acceptance validation](testing/phase-3-validation.md).
 
 ## Phase 4: Website Management And Audit Foundation
 

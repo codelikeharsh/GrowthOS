@@ -13,7 +13,7 @@
 | [0009](0009-tenant-isolation-strategy.md)              | Application-enforced tenant isolation           | Proposed for Phase 2                 |
 | [0010](0010-payment-provider-abstraction.md)           | Razorpay-first payment abstraction              | Accepted for Phase 9                 |
 | [0011](0011-aws-production-target.md)                  | AWS production target                           | Accepted for production architecture |
-| [0012](0012-agency-client-relationship-cardinality.md) | Many-to-many relationships with MVP restriction | Accepted for Phase 3                 |
+| [0012](0012-agency-client-relationship-cardinality.md) | Many-to-many relationships with MVP restriction | Implemented in Phase 3               |
 | [0013](0013-openai-provider-and-retention.md)          | OpenAI first and safe retention                 | Accepted for Phase 6                 |
 | [0014](0014-application-field-encryption.md)           | Selected-field application encryption           | Accepted for later domain phases     |
 | [0015](0015-platform-support-access.md)                | No impersonation; restricted support access     | Accepted for MVP                     |

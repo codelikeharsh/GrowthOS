@@ -49,6 +49,8 @@ pytest
 - Transactions create business state and outbox events atomically.
 - Session revocation and logout-all-devices.
 - Invitation acceptance and role assignment.
+- Atomic client creation, active-relationship uniqueness, profile resources, note visibility,
+  optimistic concurrency, and Phase 3 audits. Implemented in Phase 3.
 - Audit creation idempotency and queue job creation.
 - Outbox processing.
 - Lead capture validation, rate limiting, dedupe, and activity creation.
@@ -60,8 +62,8 @@ pytest
 - Registration and local email verification. Implemented in Phase 2.
 - Agency creation. Implemented in Phase 2.
 - Member invitation and acceptance. Implemented in Phase 2.
-- Client creation.
-- Business profile setup.
+- Client creation. Implemented in Phase 3.
+- Business profile, location, service, hours, and social-link setup. Implemented in Phase 3.
 - Website registration.
 - Audit creation and progress.
 - Audit report review.
@@ -75,8 +77,8 @@ pytest
 ## Security Tests
 
 - User A cannot access User B's organization. Implemented in Phase 2.
-- Business client cannot read agency-internal notes.
-- Agency member cannot access an unassigned client when restricted.
+- Business client cannot read agency-internal notes. Implemented in Phase 3.
+- Agency member cannot access an unassigned client when restricted. Implemented in Phase 3.
 - Expired file URLs cannot be reused.
 - Audit endpoint blocks private, loopback, link-local, metadata, and reserved IPs.
 - Webhook replay does not duplicate payment changes.

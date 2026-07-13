@@ -1,6 +1,12 @@
 import { PrismaClient } from '../generated/client/index.js'
 
 export {
+  AgencyClientNoteVisibility,
+  AgencyClientRelationshipStatus,
+  BusinessDayOfWeek,
+  BusinessLocationType,
+  BusinessPriceType,
+  BusinessSocialPlatform,
   InvitationStatus,
   MembershipStatus,
   OrganizationType,
@@ -9,6 +15,8 @@ export {
   UserStatus,
 } from '../generated/client/index.js'
 export type {
+  AgencyClientNote,
+  AgencyClientRelationship,
   AuditLog,
   Organization,
   OrganizationInvitation,
@@ -17,6 +25,11 @@ export type {
   Role,
   Session,
   User,
+  BusinessProfile,
+  BusinessLocation,
+  BusinessService,
+  BusinessHour,
+  BusinessSocialLink,
 } from '../generated/client/index.js'
 
 let client: PrismaClient | undefined

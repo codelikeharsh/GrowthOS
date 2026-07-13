@@ -4,7 +4,7 @@
 
 The repository at `/Users/harshupadhyay/Desktop/GrowthOS` was empty at the start of Phase 0. There was no existing product code, documentation, package manifest, GitHub workflow, infrastructure definition, or application scaffold to preserve.
 
-Phase 0 established the product and architecture baseline. The five initially open decisions are now finalised in [ADRs 0004 and 0012–0015](../adr/README.md). Phase 1 implements infrastructure and service shells only; product domains remain out of scope.
+Phase 0 established the product and architecture baseline. The five initially open decisions are now finalised in [ADRs 0004 and 0012–0015](../adr/README.md). Phases 1–3 now implement the infrastructure foundation, identity and organization layer, and the first product domain: agency-client relationships and business profiles. Website audits remain out of scope until Phase 4.
 
 ## Product Summary
 
@@ -52,6 +52,15 @@ The product must be useful without AI. Deterministic collectors and business wor
 - Private file metadata, direct object-storage upload flow, validation, retention, and signed downloads.
 - Plans, subscriptions, usage records, invoices, payments, payment events, and provider abstraction.
 - Platform administration, feature flags, support access, health, jobs, and usage.
+
+## Implemented Phase 3 Product Slice
+
+An authenticated agency can create a business client atomically, manage the relationship lifecycle,
+assign an active agency account manager, invite the business owner, and manage the business profile,
+locations, services and pricing, hours, social links, and visibility-scoped notes. An invited business
+owner can manage their own business data and collaborate through client-visible notes. Backend
+permission, tenant, relationship, assignment, and note-visibility checks are authoritative; Phase 4
+website and audit entities are not present.
 
 ## Success Criteria
 

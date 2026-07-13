@@ -32,13 +32,24 @@ export class SafeHttpExceptionFilter implements ExceptionFilter {
       },
       'request failed',
     )
+    const code = this.getPublicCode(exception)
     void reply.status(status).send({
       statusCode: status,
       error: status >= 500 ? 'Internal Server Error' : 'Request Error',
       message: publicMessage,
+      ...(code ? { code } : {}),
       requestId: request.id,
       timestamp: new Date().toISOString(),
     })
+  }
+
+  private getPublicCode(exception: unknown): string | undefined {
+    if (!(exception instanceof HttpException)) return undefined
+    const response = exception.getResponse()
+    if (typeof response === 'object' && 'code' in response && typeof response.code === 'string') {
+      return response.code
+    }
+    return undefined
   }
 
   private getPublicMessage(exception: unknown): string {

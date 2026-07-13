@@ -47,9 +47,29 @@ The system uses named permissions mapped to organization roles. Backend code sho
 | admin.platform.read          | Yes            | No           | No           | No            | No             | No              | No               |
 | admin.support_access.create  | Yes            | No           | No           | No            | No             | No              | No               |
 
+## Implemented Phase 3 Permissions
+
+| Permission group                 | Owner | Admin | Member default                  | Viewer default |
+| -------------------------------- | ----- | ----- | ------------------------------- | -------------- |
+| `agency_client.read`             | Yes   | Yes   | Assigned clients                | Assigned only  |
+| Client create/update             | Yes   | Yes   | Update assigned clients         | No             |
+| Suspend/terminate/assign manager | Yes   | Yes   | No                              | No             |
+| Agency-internal note read/write  | Yes   | Yes   | No                              | No             |
+| Client-visible note read/write   | Yes   | Yes   | Yes, within eligible assignment | Read only      |
+| `business_profile.read/update`   | Yes   | Yes   | Read and update                 | Read only      |
+| Business location/service manage | Yes   | Yes   | Yes                             | Read only      |
+| Business hours/social manage     | Yes   | Yes   | Yes                             | Read only      |
+
+The concrete migration seeds 20 named permissions under `agency_client.*`, `business_profile.*`,
+`business_location.*`, `business_service.*`, `business_hours.*`, and
+`business_social_link.*`. Organization type, active membership, eligible relationship state, and
+account-manager assignment remain additional predicates; a permission name alone never grants
+cross-tenant access. Platform administrators receive no implicit private client access.
+
 ## Notes
 
 - The MVP has no impersonation or tenant-content support permission. A future `Support` grant may exist only through the reasoned, scoped, owner-notified, maximum 30-minute workflow in [ADR 0015](../adr/0015-platform-support-access.md).
 - `Scoped` means access depends on assignment, relationship permissions, or explicit sharing.
 - `Optional` means the permission can be granted by configuration but is not a default role capability.
-- This matrix is a Phase 0 baseline. Phase 2 must convert it into versioned permission definitions and automated tests.
+- The organization permissions were versioned in Phase 2; the client/profile permissions were
+  versioned and tested in Phase 3. Later-phase rows remain planning baselines.

@@ -86,7 +86,19 @@ erDiagram
 Phase 1 created the Prisma foundation without a demonstration table. Phase 2 added the first
 product migration for users, sessions, verification and reset tokens, organizations, memberships,
 invitations, roles, permissions, and audit logs. The RBAC seed and pending-invitation uniqueness
-rule are versioned in a second migration.
+rule are versioned in a second migration. Phase 3 adds agency-client relationships and notes,
+business profiles, locations, services, hours, and social links in a third migration.
+
+Phase 3 custom PostgreSQL constraints enforce one active agency relationship per business, one
+active primary location, valid coordinate and money ranges, and non-overlapping opening intervals.
+Opening and closing values are stored as minute offsets from local midnight; the profile IANA
+timezone supplies their interpretation. This supports multiple daily intervals without arbitrary
+text or floating-point time arithmetic.
+
+Relationship and business history uses restrictive foreign keys. Removing an agency member clears
+their account-manager assignment to `null` and records the count in the removal audit event; it does
+not delete a relationship. Managed website and file relations remain intentionally absent until
+their later phases.
 
 ## Finalised Modelling Decisions
 
