@@ -50,11 +50,22 @@ Validation:
 
 ## Phase 2: Authentication, Organizations, And RBAC
 
-Status: not started.
+Status: complete. Acceptance validation passed on 2026-07-13, including Docker-backed identity,
+session, CSRF, invitation, permission, tenant-isolation, audit-log, and real Chromium flows.
 
-Gate: do not proceed until tenant-isolation tests pass.
+Delivered:
 
-Deliver secure first-party auth, session management, organizations, memberships, invitations, permission service, tenant middleware/context, audit logging, and security tests.
+- First-party registration, email verification, login, logout, logout-all, and password reset.
+- Argon2id password hashing and hashed, expiring verification/reset/invitation tokens.
+- PostgreSQL-backed opaque sessions, secure cookies, CSRF validation, rotation, listing, and revocation.
+- Organizations, memberships, invitations, seeded roles and permissions, and last-owner protection.
+- Resource-level tenant predicates and permission checks on every organization operation.
+- Immediate session revocation after role changes and membership removal.
+- Audit records for sensitive identity and organization events.
+- Functional authentication and organization settings UI.
+- Docker-backed integration tests and the required browser acceptance journey.
+
+Validation: see [Phase 2 acceptance validation](testing/phase-2-validation.md).
 
 ## Phase 3: Agency-Client Relationships And Business Profiles
 

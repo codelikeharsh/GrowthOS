@@ -9,7 +9,7 @@
 
 ## Root Quality Commands
 
-Phase 1 should provide these commands:
+The repository provides these commands:
 
 ```bash
 pnpm format:check
@@ -57,9 +57,9 @@ pytest
 
 ## End-to-End Test Coverage
 
-- Registration and local email verification.
-- Agency creation.
-- Member invitation.
+- Registration and local email verification. Implemented in Phase 2.
+- Agency creation. Implemented in Phase 2.
+- Member invitation and acceptance. Implemented in Phase 2.
 - Client creation.
 - Business profile setup.
 - Website registration.
@@ -74,14 +74,14 @@ pytest
 
 ## Security Tests
 
-- User A cannot access User B's organization.
+- User A cannot access User B's organization. Implemented in Phase 2.
 - Business client cannot read agency-internal notes.
 - Agency member cannot access an unassigned client when restricted.
 - Expired file URLs cannot be reused.
 - Audit endpoint blocks private, loopback, link-local, metadata, and reserved IPs.
 - Webhook replay does not duplicate payment changes.
 - Public forms are rate-limited.
-- Invalid roles and permissions are rejected.
+- Invalid roles and permissions are rejected. Implemented in Phase 2.
 - Exports require permission.
 - Admin routes reject ordinary users.
 

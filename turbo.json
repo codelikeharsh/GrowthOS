@@ -10,11 +10,25 @@
         "API_PORT",
         "DATABASE_URL",
         "LOG_LEVEL",
+        "MAIL_FROM",
+        "MAILPIT_SMTP_HOST",
+        "MAILPIT_SMTP_PORT",
+        "NEXT_PUBLIC_API_URL",
         "NODE_ENV",
         "OPENAI_API_KEY",
         "OPENAI_MODEL",
         "OPENAPI_ENABLED",
+        "PASSWORD_RESET_RATE_LIMIT",
+        "PASSWORD_RESET_TTL_MINUTES",
+        "PUBLIC_WEB_URL",
         "REDIS_URL",
+        "SESSION_COOKIE_NAME",
+        "SESSION_TTL_HOURS",
+        "CSRF_COOKIE_NAME",
+        "EMAIL_VERIFICATION_TTL_MINUTES",
+        "INVITATION_TTL_HOURS",
+        "LOGIN_RATE_LIMIT",
+        "AUTH_RATE_LIMIT_WINDOW_SECONDS",
         "WEB_PORT"
       ],
       "persistent": true
@@ -40,7 +54,14 @@
     },
     "test": {
       "dependsOn": ["^build"],
-      "env": ["DATABASE_URL", "REDIS_URL", "RUN_INTEGRATION_TESTS"],
+      "env": [
+        "DATABASE_URL",
+        "REDIS_URL",
+        "RUN_INTEGRATION_TESTS",
+        "MAILPIT_SMTP_HOST",
+        "MAILPIT_SMTP_PORT",
+        "PUBLIC_WEB_URL"
+      ],
       "outputs": []
     },
     "test:unit": {
@@ -50,12 +71,27 @@
     "test:integration": {
       "dependsOn": ["^build"],
       "cache": false,
-      "env": ["DATABASE_URL", "REDIS_URL", "RUN_INTEGRATION_TESTS"],
+      "env": [
+        "DATABASE_URL",
+        "REDIS_URL",
+        "RUN_INTEGRATION_TESTS",
+        "MAILPIT_SMTP_HOST",
+        "MAILPIT_SMTP_PORT",
+        "PUBLIC_WEB_URL"
+      ],
       "outputs": []
     },
     "test:e2e": {
       "dependsOn": ["build"],
       "cache": false,
+      "env": [
+        "DATABASE_URL",
+        "REDIS_URL",
+        "NEXT_PUBLIC_API_URL",
+        "MAILPIT_SMTP_HOST",
+        "MAILPIT_SMTP_PORT",
+        "PUBLIC_WEB_URL"
+      ],
       "outputs": []
     },
     "@growthos/ai-service#build": { "outputs": [] },

@@ -15,7 +15,7 @@
     "test": "vitest run",
     "test:unit": "vitest run",
     "test:integration": "vitest run --passWithNoTests --testNamePattern=integration",
-    "test:e2e": "vitest run --passWithNoTests --testNamePattern=e2e",
+    "test:e2e": "playwright test",
     "clean": "rimraf .next coverage"
   },
   "dependencies": {
@@ -27,6 +27,7 @@
   "devDependencies": {
     "@growthos/eslint-config": "workspace:*",
     "@growthos/tsconfig": "workspace:*",
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "4.1.14",
     "@types/node": "24.7.2",
     "@types/react": "19.2.2",

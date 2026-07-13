@@ -8,3 +8,5 @@ pnpm-lock.yaml
 packages/db/generated
 services/ai-service/.venv
 apps/web/next-env.d.ts
+apps/web/test-results
+apps/web/playwright-report

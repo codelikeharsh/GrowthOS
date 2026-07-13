@@ -4,12 +4,15 @@ zero2one Growth OS is a planned multi-tenant operating system for digital servic
 
 ## Current phase
 
-Phase 0 architecture is complete and its final decisions are recorded in the [ADR index](docs/adr/README.md). Phase 1 provides the monorepo, service shells, local infrastructure, runtime validation, health checks, quality tooling, tests, and CI. Phase 2 authentication, organisations, membership, invitations, and RBAC have **not** started.
+Phases 0, 1, and 2 are complete. The repository now includes the validated platform foundation plus
+first-party authentication, PostgreSQL-backed opaque sessions, organisations, memberships,
+invitations, RBAC, tenant isolation, audit logging, and the minimal functional identity UI. Phase 3
+has not started.
 
 ## Architecture
 
-- `apps/web`: Next.js 16 App Router browser shell; no secrets and no authentication.
-- `apps/api`: NestJS 11 with Fastify, versioned under `/api/v1`.
+- `apps/web`: Next.js 16 App Router identity and organisation browser experience; no server secrets.
+- `apps/api`: NestJS 11 with Fastify, versioned under `/api/v1`, with identity and tenant authorization.
 - `apps/worker`: Node.js BullMQ lifecycle and Redis foundation; no product jobs.
 - `services/ai-service`: Python FastAPI service with an internal provider protocol; no real AI calls.
 - `packages/config`: server runtime environment validation for the API and worker.
@@ -43,10 +46,12 @@ services/ai-service/.venv/bin/pip install -e 'services/ai-service[dev]'
 source services/ai-service/.venv/bin/activate
 docker compose up -d
 pnpm db:generate
+pnpm db:migrate:deploy
 pnpm dev
 ```
 
-All values in `.env.example` are fake local-development values. OpenAI, Sentry, and OpenTelemetry variables are optional in Phase 1. Do not commit `.env` or real credentials.
+All values in `.env.example` are local-development values. OpenAI, Sentry, and OpenTelemetry
+variables remain optional. Do not commit `.env` or real credentials.
 
 ## Local infrastructure
 
@@ -84,7 +89,7 @@ pnpm db:studio
 pnpm clean
 ```
 
-Integration tests are skipped by default. With PostgreSQL and Redis healthy, run:
+With PostgreSQL, Redis, and Mailpit healthy, run the infrastructure suite explicitly:
 
 ```bash
 RUN_INTEGRATION_TESTS=true pnpm test:integration
@@ -109,18 +114,22 @@ python3 -m pytest
 | MinIO API / console | `http://localhost:9000` / `http://localhost:9001` | Compose health check                                  |
 | Mailpit SMTP / UI   | `localhost:1025` / `http://localhost:8025`        | Compose health check                                  |
 
-API readiness returns HTTP 503 if PostgreSQL or Redis is unavailable. MinIO and Mailpit are non-critical Phase 1 dependencies. AI readiness reports optional provider configuration without contacting OpenAI.
+API readiness returns HTTP 503 if PostgreSQL or Redis is unavailable. Mailpit supports local
+verification, reset, and invitation emails. AI readiness reports optional provider configuration
+without contacting OpenAI.
 
-## Prisma foundation
+## Identity data model
 
-The Phase 1 Prisma schema intentionally has no domain models or meaningless demonstration migration. `SELECT 1` validates connectivity. The generated client is backend-only and ignored by Git. Phase 2 will introduce the first justified migration.
+The first product migration defines users, hashed opaque sessions and transient tokens,
+organisations, memberships, invitations, roles, permissions, and audit logs. A second migration
+installs the reviewed Phase 2 role/permission matrix and the live-invitation uniqueness rule. The
+generated Prisma client remains backend-only and ignored by Git.
 
 ## Known limitations
 
-- No registration, login, sessions, organisations, membership, invitations, or RBAC.
 - No product domains, crawler, lead capture, projects, billing, or payments.
 - No OpenAI call, provider adapter implementation, recommendation data, or fake AI response.
 - No worker product queue is registered.
 - Terraform implementation is deferred to production hardening.
 
-The exact Phase 2 starting point is the identity data model and first migration: users, PostgreSQL-backed opaque sessions, organisations, memberships, and invitations, followed immediately by tenant context, permission enforcement, and tenant-isolation tests. Do not start UI login work before those backend boundaries are designed together.
+The next permitted roadmap boundary is Phase 3: agency-client relationships and business profiles.

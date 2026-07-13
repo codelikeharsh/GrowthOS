@@ -28,6 +28,7 @@ export class SafeHttpExceptionFilter implements ExceptionFilter {
         path: request.url,
         status,
         errorClass: exception instanceof Error ? exception.name : 'UnknownError',
+        errorMessage: exception instanceof Error ? exception.message : 'Unknown failure',
       },
       'request failed',
     )

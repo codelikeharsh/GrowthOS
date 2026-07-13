@@ -9,6 +9,7 @@ allowBuilds:
   '@prisma/engines': true
   '@scarf/scarf': false
   '@tailwindcss/oxide': true
+  argon2: true
   esbuild: true
   msgpackr-extract: true
   prisma: true

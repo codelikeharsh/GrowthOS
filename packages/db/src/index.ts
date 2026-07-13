@@ -1,5 +1,24 @@
 import { PrismaClient } from '../generated/client/index.js'
 
+export {
+  InvitationStatus,
+  MembershipStatus,
+  OrganizationType,
+  Prisma,
+  RoleName,
+  UserStatus,
+} from '../generated/client/index.js'
+export type {
+  AuditLog,
+  Organization,
+  OrganizationInvitation,
+  OrganizationMember,
+  Permission,
+  Role,
+  Session,
+  User,
+} from '../generated/client/index.js'
+
 let client: PrismaClient | undefined
 
 export function getDatabaseClient(): PrismaClient {

@@ -8,10 +8,10 @@ describe('web shell smoke tests', () => {
   it('renders an accessible home landmark', () => {
     const output = renderToStaticMarkup(createElement(HomePage))
     expect(output).toContain('<main')
-    expect(output).toContain('zero2one Growth OS')
+    expect(output).toContain('One secure workspace for agency growth operations')
   })
 
-  it('states that authentication is not implemented', () => {
-    expect(renderToStaticMarkup(createElement(ApplicationPage))).toContain('Authentication')
+  it('renders the protected workspace loading boundary', () => {
+    expect(renderToStaticMarkup(createElement(ApplicationPage))).toContain('Loading workspace')
   })
 })

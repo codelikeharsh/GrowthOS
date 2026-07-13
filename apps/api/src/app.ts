@@ -10,6 +10,7 @@ import { NestFactory } from '@nestjs/core'
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify'
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
 import helmet from '@fastify/helmet'
+import cookie from '@fastify/cookie'
 import { loggerOptions } from '@growthos/logger'
 import { AppModule } from './app.module.js'
 import { getApiEnvironment } from './environment.js'
@@ -30,6 +31,7 @@ export async function createApplication(module = AppModule): Promise<NestFastify
     logger: false,
   })
 
+  await app.register(cookie)
   await app.register(helmet)
   app.enableCors({ credentials: true, origin: environment.API_CORS_ORIGINS })
   app.setGlobalPrefix('api', { exclude: [{ path: '/', method: RequestMethod.GET }] })

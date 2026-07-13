@@ -81,9 +81,12 @@ erDiagram
 - API route parameters are never trusted as authorization proof.
 - Tenant isolation tests must cover direct IDs, nested resources, search, exports, files, webhooks, background jobs, and generated reports.
 
-## Phase 1 Data Work
+## Implemented Data Work
 
-Phase 1 creates the Prisma package, an intentionally model-free schema baseline, connectivity checks, and migration commands. There is no meaningless demonstration table or migration. Phase 2 introduces the first justified product schema.
+Phase 1 created the Prisma foundation without a demonstration table. Phase 2 added the first
+product migration for users, sessions, verification and reset tokens, organizations, memberships,
+invitations, roles, permissions, and audit logs. The RBAC seed and pending-invitation uniqueness
+rule are versioned in a second migration.
 
 ## Finalised Modelling Decisions
 
