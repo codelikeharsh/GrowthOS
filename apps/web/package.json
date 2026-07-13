@@ -1,0 +1,42 @@
+{
+  "name": "@growthos/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Accessible Next.js App Router shell for Growth OS browser experiences.",
+  "scripts": {
+    "dev": "next dev --port ${WEB_PORT:-3000}",
+    "build": "next build",
+    "start": "next start --port ${WEB_PORT:-3000}",
+    "lint": "eslint .",
+    "format": "prettier --write --ignore-path ../../.prettierignore .",
+    "format:check": "prettier --check --ignore-path ../../.prettierignore .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:integration": "vitest run --passWithNoTests --testNamePattern=integration",
+    "test:e2e": "vitest run --passWithNoTests --testNamePattern=e2e",
+    "clean": "rimraf .next coverage"
+  },
+  "dependencies": {
+    "next": "16.1.6",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "zod": "4.1.12"
+  },
+  "devDependencies": {
+    "@growthos/eslint-config": "workspace:*",
+    "@growthos/tsconfig": "workspace:*",
+    "@tailwindcss/postcss": "4.1.14",
+    "@types/node": "24.7.2",
+    "@types/react": "19.2.2",
+    "@types/react-dom": "19.2.2",
+    "eslint": "9.37.0",
+    "postcss": "8.5.6",
+    "prettier": "3.6.2",
+    "rimraf": "6.0.1",
+    "tailwindcss": "4.1.14",
+    "typescript": "5.9.3",
+    "vitest": "3.2.4"
+  }
+}

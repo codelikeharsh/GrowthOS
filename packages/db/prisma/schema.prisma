@@ -1,0 +1,12 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Phase 1 intentionally has no product models. Phase 2 will introduce the first
+// justified migration for identity, sessions, organisations, and memberships.

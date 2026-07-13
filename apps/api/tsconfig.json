@@ -1,0 +1,11 @@
+{
+  "extends": "@growthos/tsconfig/node.json",
+  "compilerOptions": {
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "outDir": "dist",
+    "rootDir": "src",
+    "useDefineForClassFields": false
+  },
+  "include": ["src/**/*.ts"]
+}

@@ -1,0 +1,47 @@
+{
+  "name": "@growthos/db",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Prisma client lifecycle and PostgreSQL connectivity consumed by backend services only.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "pnpm generate && tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch",
+    "lint": "eslint .",
+    "format": "prettier --write --ignore-path ../../.prettierignore .",
+    "format:check": "prettier --check --ignore-path ../../.prettierignore .",
+    "typecheck": "pnpm generate && tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:unit": "vitest run --passWithNoTests --exclude '**/*.integration.test.ts'",
+    "test:integration": "vitest run src/connectivity.integration.test.ts",
+    "test:e2e": "vitest run --passWithNoTests --testNamePattern=e2e",
+    "generate": "prisma generate",
+    "validate": "DATABASE_URL=${DATABASE_URL:-postgresql://growthos_validation:growthos_validation@localhost:5432/growthos_validation} prisma validate",
+    "migrate": "prisma migrate dev",
+    "migrate:deploy": "prisma migrate deploy",
+    "studio": "prisma studio",
+    "clean": "rimraf dist generated coverage"
+  },
+  "dependencies": {
+    "@prisma/client": "6.19.0"
+  },
+  "devDependencies": {
+    "@growthos/eslint-config": "workspace:*",
+    "@growthos/tsconfig": "workspace:*",
+    "@types/node": "24.7.2",
+    "eslint": "9.37.0",
+    "prettier": "3.6.2",
+    "prisma": "6.19.0",
+    "rimraf": "6.0.1",
+    "typescript": "5.9.3",
+    "vitest": "3.2.4"
+  }
+}

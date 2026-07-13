@@ -1,0 +1,10 @@
+node_modules
+.next
+dist
+build
+coverage
+.turbo
+pnpm-lock.yaml
+packages/db/generated
+services/ai-service/.venv
+apps/web/next-env.d.ts

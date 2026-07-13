@@ -1,0 +1,68 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "tasks": {
+    "dev": {
+      "cache": false,
+      "env": [
+        "AI_PROVIDER",
+        "AI_SERVICE_PORT",
+        "API_CORS_ORIGINS",
+        "API_PORT",
+        "DATABASE_URL",
+        "LOG_LEVEL",
+        "NODE_ENV",
+        "OPENAI_API_KEY",
+        "OPENAI_MODEL",
+        "OPENAPI_ENABLED",
+        "REDIS_URL",
+        "WEB_PORT"
+      ],
+      "persistent": true
+    },
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+    },
+    "lint": {
+      "dependsOn": ["^lint"],
+      "outputs": []
+    },
+    "format": {
+      "cache": false,
+      "outputs": []
+    },
+    "format:check": {
+      "outputs": []
+    },
+    "typecheck": {
+      "dependsOn": ["^build"],
+      "outputs": []
+    },
+    "test": {
+      "dependsOn": ["^build"],
+      "env": ["DATABASE_URL", "REDIS_URL", "RUN_INTEGRATION_TESTS"],
+      "outputs": []
+    },
+    "test:unit": {
+      "dependsOn": ["^build"],
+      "outputs": []
+    },
+    "test:integration": {
+      "dependsOn": ["^build"],
+      "cache": false,
+      "env": ["DATABASE_URL", "REDIS_URL", "RUN_INTEGRATION_TESTS"],
+      "outputs": []
+    },
+    "test:e2e": {
+      "dependsOn": ["build"],
+      "cache": false,
+      "outputs": []
+    },
+    "@growthos/ai-service#build": { "outputs": [] },
+    "@growthos/eslint-config#build": { "outputs": [] },
+    "@growthos/tsconfig#build": { "outputs": [] },
+    "clean": {
+      "cache": false
+    }
+  }
+}
