@@ -116,13 +116,21 @@ export interface HomepageResponse {
 }
 
 export interface SecurePageFetcher {
-  fetch(url: string, signal?: AbortSignal): Promise<HomepageResponse>
+  fetch(
+    url: string,
+    signal?: AbortSignal,
+    allowedContentTypes?: string[],
+  ): Promise<HomepageResponse>
 }
 
 export class SecureHomepageFetcher implements SecurePageFetcher {
   constructor(private readonly validator: SafeTargetValidator) {}
 
-  async fetch(url: string, signal?: AbortSignal): Promise<HomepageResponse> {
+  async fetch(
+    url: string,
+    signal?: AbortSignal,
+    allowedContentTypes = ['text/html', 'application/xhtml+xml'],
+  ): Promise<HomepageResponse> {
     let target = await this.validator.validate(url)
     const visited = new Set([target.url.toString()])
     const started = Date.now()
@@ -147,7 +155,7 @@ export class SecureHomepageFetcher implements SecurePageFetcher {
       const contentType = (
         String(response.headers['content-type'] ?? '').split(';')[0] ?? ''
       ).toLowerCase()
-      if (contentType !== 'text/html' && contentType !== 'application/xhtml+xml')
+      if (response.statusCode !== 404 && !allowedContentTypes.includes(contentType))
         throw new HomepageFetchError(
           'AUDIT_PAGE_CONTENT_TYPE_UNSUPPORTED',
           'Homepage response is not HTML',

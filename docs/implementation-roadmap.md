@@ -89,8 +89,8 @@ Validation: see [Phase 3 acceptance validation](testing/phase-3-validation.md).
 
 ## Phase 4: Website Management And Audit Foundation
 
-Status: Phase 4A–4D2A complete. Website registration, SSRF validation, audit lifecycle/outbox, the
-bounded homepage worker, and bounded internal-page crawling are implemented.
+Status: Phase 4A–4D2B complete. Website registration, SSRF validation, audit lifecycle/outbox,
+bounded crawling, robots compliance, and sitemap-assisted discovery are implemented.
 
 - Phase 4A: business-owned website registration, tenant-aware agency/business management, storage
   URL normalization, and safe disablement.
@@ -103,6 +103,8 @@ bounded homepage worker, and bounded internal-page crawling are implemented.
   handling. Audits remain in `ANALYZING` until a later analysis consumer exists.
 - Phase 4D2A: same-approved-host anchor discovery and secure bounded crawling (10 pages, depth 2,
   concurrency cap 2, 50 candidates), tracking/fragment normalization, and page-level failure results.
+- Phase 4D2B: pinned-transport robots policy and sitemap-assisted same-host candidate discovery;
+  sitemap files cap at 5, sitemap index depth remains pending, and at most 200 sitemap URLs are examined.
 - Remaining Phase 4: multi-page discovery/crawling, progress, findings, screenshots, and report UI.
 
 Validation: see [Phase 4D1 acceptance validation](testing/phase-4d1-validation.md).

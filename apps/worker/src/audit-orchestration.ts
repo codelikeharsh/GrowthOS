@@ -4,9 +4,16 @@ import {
   enqueueDiscoveredLinks,
   discoverInternalLinks,
   MAX_CRAWL_PAGES,
+  normalizeCrawlUrl,
 } from './crawl-discovery.js'
 import { HomepageFetchError } from './secure-homepage-fetcher.js'
 import type { HomepageResponse, SecurePageFetcher } from './secure-homepage-fetcher.js'
+import {
+  MAX_SITEMAP_FILES,
+  MAX_SITEMAP_URLS,
+  parseRobots,
+  sitemapCandidates,
+} from './robots-sitemaps.js'
 
 interface AuditRecord {
   id: string
@@ -142,16 +149,60 @@ export class AuditOrchestrationConsumer {
     let processed = 0
     await this.persistSuccess(auditId, requestedUrl, homepage)
     processed += 1
+    const approvedHost = new URL(homepage.finalUrl).hostname
+    const robots = await this.robots(homepage.finalUrl)
+    if (!robots) {
+      await this.database.auditRun.updateMany({
+        where: { id: auditId, status: AuditRunStatus.CRAWLING },
+        data: { pagesDiscovered: 1, pagesProcessed: 1, version: { increment: 1 } },
+      })
+      return
+    }
     enqueueDiscoveredLinks(
       queue,
       seen,
-      discoverInternalLinks(
-        homepage.body.toString('utf8'),
-        homepage.finalUrl,
-        new URL(homepage.finalUrl).hostname,
+      discoverInternalLinks(homepage.body.toString('utf8'), homepage.finalUrl, approvedHost).filter(
+        (url) => robots.allows(url),
       ),
       1,
     )
+    const sitemapUrls = robots.sitemaps.length
+      ? robots.sitemaps
+          .map((url) => normalizeCrawlUrl(url, homepage.finalUrl, approvedHost))
+          .filter((url): url is string => Boolean(url))
+      : [new URL('/sitemap.xml', homepage.finalUrl).toString()]
+    const sitemapQueue = sitemapUrls.map((url) => ({ url, depth: 0 }))
+    let sitemapFiles = 0
+    while (sitemapQueue.length && sitemapFiles < MAX_SITEMAP_FILES) {
+      const sitemapCandidate = sitemapQueue.shift()
+      if (!sitemapCandidate) break
+      const sitemapUrl = sitemapCandidate.url
+      if ((await this.status(auditId)) !== AuditRunStatus.CRAWLING) return
+      try {
+        const sitemap = await this.fetcher.fetch(sitemapUrl, undefined, [
+          'application/xml',
+          'text/xml',
+        ])
+        sitemapFiles += 1
+        if (sitemap.httpStatus >= 400) continue
+        const candidates = sitemapCandidates(
+          sitemap.body.toString('utf8'),
+          sitemap.finalUrl,
+          approvedHost,
+        )
+        enqueueDiscoveredLinks(
+          queue,
+          seen,
+          candidates.pages.filter((url) => robots.allows(url)).slice(0, MAX_SITEMAP_URLS),
+          1,
+        )
+        if (sitemapCandidate.depth < 2)
+          for (const index of candidates.indexes)
+            sitemapQueue.push({ url: index, depth: sitemapCandidate.depth + 1 })
+      } catch {
+        // Discovery documents are non-terminal; normal internal links remain crawlable.
+      }
+    }
     while (queue.length && processed < MAX_CRAWL_PAGES) {
       if ((await this.status(auditId)) !== AuditRunStatus.CRAWLING) return
       const candidate = queue.shift()
@@ -166,8 +217,8 @@ export class AuditOrchestrationConsumer {
           discoverInternalLinks(
             response.body.toString('utf8'),
             response.finalUrl,
-            new URL(homepage.finalUrl).hostname,
-          ),
+            approvedHost,
+          ).filter((url) => robots.allows(url)),
           candidate.depth + 1,
         )
       } catch (error) {
@@ -184,6 +235,19 @@ export class AuditOrchestrationConsumer {
       where: { id: auditId, status: AuditRunStatus.CRAWLING },
       data: { pagesDiscovered: seen.size, pagesProcessed: processed, version: { increment: 1 } },
     })
+  }
+
+  private async robots(finalHomepageUrl: string) {
+    try {
+      const url = new URL('/robots.txt', finalHomepageUrl).toString()
+      const response = await this.fetcher.fetch(url, undefined, ['text/plain', 'text/xml'])
+      if (response.httpStatus === 404) return parseRobots('', finalHomepageUrl)
+      if (response.httpStatus >= 400) return undefined
+      return parseRobots(response.body.toString('utf8').slice(0, 512 * 1024), finalHomepageUrl)
+    } catch {
+      // Conservative policy: do not discover additional pages when robots cannot be obtained.
+      return undefined
+    }
   }
 
   private async persistSuccess(

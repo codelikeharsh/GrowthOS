@@ -102,9 +102,12 @@ sequenceDiagram
 
 Phase 4C writes an `audit_runs` row, `outbox_events` row, and audit-log event in one transaction.
 The dispatcher publishes only audit, website, and organization UUIDs to `audit-orchestration`.
-Phase 4D2A consumes the job only when its audit is still queued, revalidates DNS immediately before
+Phase 4D2B consumes the job only when its audit is still queued, revalidates DNS immediately before
 each pinned-IP connection, and performs a bounded internal crawl: at most 10 pages, depth 2,
 concurrency 2, and 50 retained candidates. It follows only normalized same-approved-host HTTP(S)
 anchor URLs, strips fragments and common tracking parameters, and rejects credentials, custom ports,
 external hosts, and obvious destructive paths. A failed internal page becomes a safe page-level result
-and does not fail the whole audit; robots.txt and sitemap support remain pending.
+and does not fail the whole audit. It fetches `/robots.txt` with `GrowthOSAuditBot`, honours applicable
+Allow/Disallow rules, reads Sitemap directives (or tries `/sitemap.xml`), and keeps sitemap failures
+non-terminal. Missing robots permits crawling; a temporary robots failure conservatively prevents
+additional discovery. Crawl-delay is ignored: crawling stays sequential and bounded.
