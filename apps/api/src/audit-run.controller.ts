@@ -60,6 +60,23 @@ export class AuditRunController {
   ) {
     return this.audits.get(auth.userId, this.context(headers), websiteId, auditId)
   }
+  @Get(':auditId/findings')
+  findings(
+    @CurrentAuth() auth: AuthContext,
+    @Param('websiteId') websiteId: string,
+    @Param('auditId') auditId: string,
+    @Headers() headers: Record<string, string>,
+    @Query()
+    query: {
+      severity?: string
+      category?: string
+      ruleId?: string
+      pageId?: string
+      limit?: number
+    },
+  ) {
+    return this.audits.findings(auth.userId, this.context(headers), websiteId, auditId, query)
+  }
   @Delete(':auditId')
   @UseGuards(CsrfGuard)
   cancel(

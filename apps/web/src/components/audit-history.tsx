@@ -138,12 +138,28 @@ export function AuditStatus({
 }) {
   const [audit, setAudit] = useState<Audit>()
   const [error, setError] = useState('')
+  const [findings, setFindings] = useState<
+    {
+      id: string
+      title: string
+      severity: string
+      category: string
+      description: string
+      recommendationTemplate: string
+      auditPage?: { normalizedUrl: string } | null
+    }[]
+  >([])
   useEffect(() => {
     apiRequest<Audit>(`/websites/${websiteId}/audits/${auditId}`, { headers: context.headers })
       .then(setAudit)
       .catch((cause: unknown) =>
         setError(cause instanceof Error ? cause.message : 'Unable to load audit'),
       )
+    apiRequest<typeof findings>(`/websites/${websiteId}/audits/${auditId}/findings`, {
+      headers: context.headers,
+    })
+      .then(setFindings)
+      .catch(() => setFindings([]))
   }, [auditId, websiteId, context.headers])
   if (error)
     return (
@@ -180,6 +196,26 @@ export function AuditStatus({
           </div>
         ) : null}
       </dl>
+      <h3 className="mt-6 text-lg font-semibold">Findings</h3>
+      {findings.length ? (
+        <ul className="mt-3 space-y-3">
+          {findings.map((finding) => (
+            <li className="rounded border p-3 text-sm" key={finding.id}>
+              <strong>
+                {finding.severity} · {finding.category}: {finding.title}
+              </strong>
+              <p>{finding.auditPage?.normalizedUrl ?? 'Audit-wide'}</p>
+              <p>{finding.description}</p>
+              <p className="mt-1">
+                <span className="font-semibold">Suggested action:</span>{' '}
+                {finding.recommendationTemplate}
+              </p>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-3 text-sm">No deterministic findings recorded.</p>
+      )}
     </section>
   )
 }

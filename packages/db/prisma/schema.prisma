@@ -110,6 +110,21 @@ enum AuditPageStatus {
   FAILED
 }
 
+enum AuditFindingCategory {
+  TECHNICAL
+  SEO
+  CONTENT
+  BROKEN_LINK
+}
+
+enum AuditFindingSeverity {
+  INFO
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
 model User {
   id                         String                     @id @default(uuid()) @db.Uuid
   email                      String                     @unique @db.VarChar(320)
@@ -408,6 +423,7 @@ model AuditRun {
   subsequentAuditRuns AuditRun[]      @relation("PreviousAuditRun")
   outboxEvent        OutboxEvent?
   pages              AuditPage[]
+  findings           AuditFinding[]
 
   @@unique([websiteId, idempotencyKey])
   @@index([organizationId, createdAt])
@@ -432,10 +448,37 @@ model AuditPage {
   createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
   auditRun        AuditRun        @relation(fields: [auditRunId], references: [id], onDelete: Cascade)
+  findings        AuditFinding[]
 
   @@unique([auditRunId, normalizedUrl])
   @@index([auditRunId, status])
   @@map("audit_pages")
+}
+
+model AuditFinding {
+  id                     String               @id @default(uuid()) @db.Uuid
+  auditRunId             String               @map("audit_run_id") @db.Uuid
+  auditPageId            String?              @map("audit_page_id") @db.Uuid
+  category               AuditFindingCategory
+  ruleId                 String               @map("rule_id") @db.VarChar(100)
+  severity               AuditFindingSeverity
+  title                  String               @db.VarChar(300)
+  description            String               @db.VarChar(2000)
+  evidence               Json
+  recommendationTemplate String               @map("recommendation_template") @db.VarChar(2000)
+  fingerprint            String               @db.Char(64)
+  firstDetectedAt        DateTime             @default(now()) @map("first_detected_at") @db.Timestamptz(6)
+  lastDetectedAt         DateTime             @default(now()) @map("last_detected_at") @db.Timestamptz(6)
+  resolvedAt             DateTime?            @map("resolved_at") @db.Timestamptz(6)
+  createdAt              DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+  auditRun               AuditRun             @relation(fields: [auditRunId], references: [id], onDelete: Cascade)
+  auditPage              AuditPage?           @relation(fields: [auditPageId], references: [id], onDelete: SetNull)
+
+  @@unique([auditRunId, fingerprint])
+  @@index([auditRunId, severity, category])
+  @@index([auditPageId])
+  @@map("audit_findings")
 }
 
 model OutboxEvent {

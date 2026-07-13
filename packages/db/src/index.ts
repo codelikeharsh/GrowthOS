@@ -5,6 +5,8 @@ export {
   AgencyClientRelationshipStatus,
   AuditRunStatus,
   AuditPageStatus,
+  AuditFindingCategory,
+  AuditFindingSeverity,
   AuditTriggerType,
   BusinessDayOfWeek,
   BusinessLocationType,
@@ -36,6 +38,7 @@ export type {
   Website,
   AuditRun,
   AuditPage,
+  AuditFinding,
   OutboxEvent,
 } from '../generated/client/index.js'
 

@@ -142,6 +142,34 @@ export class AuditRunService {
     return audit
   }
 
+  async findings(
+    userId: string,
+    headers: WebsiteContextHeaders,
+    websiteId: string,
+    auditId: string,
+    filters: {
+      severity?: string
+      category?: string
+      ruleId?: string
+      pageId?: string
+      limit?: number
+    },
+  ) {
+    await this.get(userId, headers, websiteId, auditId)
+    return this.database.auditFinding.findMany({
+      where: {
+        auditRunId: auditId,
+        ...(filters.severity ? { severity: filters.severity as never } : {}),
+        ...(filters.category ? { category: filters.category as never } : {}),
+        ...(filters.ruleId ? { ruleId: filters.ruleId } : {}),
+        ...(filters.pageId ? { auditPageId: filters.pageId } : {}),
+      },
+      include: { auditPage: { select: { normalizedUrl: true } } },
+      orderBy: [{ severity: 'desc' }, { createdAt: 'asc' }],
+      take: Math.min(Math.max(filters.limit ?? 50, 1), 50),
+    })
+  }
+
   async cancel(
     userId: string,
     headers: WebsiteContextHeaders,

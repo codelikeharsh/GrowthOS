@@ -14,6 +14,7 @@ import {
   parseRobots,
   sitemapCandidates,
 } from './robots-sitemaps.js'
+import { evaluateFindings } from './finding-rules.js'
 
 interface AuditRecord {
   id: string
@@ -35,7 +36,25 @@ export interface AuditWorkerDatabase {
     findUnique(args: object): Promise<AuditRecord | null>
     updateMany(args: object): Promise<{ count: number }>
   }
-  auditPage: { upsert(args: object): Promise<unknown> }
+  auditPage: {
+    upsert(args: object): Promise<unknown>
+    findMany(
+      args: object,
+    ): Promise<
+      {
+        id: string
+        normalizedUrl: string
+        status: AuditPageStatus
+        errorCode?: string | null
+        httpStatus?: number | null
+        title?: string | null
+        metaDescription?: string | null
+        canonicalUrl?: string | null
+        wordCount?: number | null
+      }[]
+    >
+  }
+  auditFinding: { upsert(args: object): Promise<unknown> }
   $transaction<T>(callback: (transaction: AuditWorkerDatabase) => Promise<T>): Promise<T>
 }
 
@@ -94,9 +113,16 @@ export class AuditOrchestrationConsumer {
       if ((await this.status(audit.id)) !== AuditRunStatus.CRAWLING) return
       await this.crawl(audit.id, homepage, audit.website.url)
       if ((await this.status(audit.id)) !== AuditRunStatus.CRAWLING) return
+      if (!(await this.transition(audit.id, AuditRunStatus.CRAWLING, AuditRunStatus.ANALYZING)))
+        return
+      await this.analyse(audit.id)
+      const pages = await this.database.auditPage.findMany({ where: { auditRunId: audit.id } })
+      const terminal = pages.some((page) => page.status === AuditPageStatus.FAILED)
+        ? AuditRunStatus.PARTIAL
+        : AuditRunStatus.COMPLETED
       await this.database.auditRun.updateMany({
-        where: { id: audit.id, status: AuditRunStatus.CRAWLING },
-        data: { status: AuditRunStatus.ANALYZING, version: { increment: 1 } },
+        where: { id: audit.id, status: AuditRunStatus.ANALYZING },
+        data: { status: terminal, completedAt: new Date(), version: { increment: 1 } },
       })
       this.logger.info(
         { ...context, durationMs: homepage.durationMs },
@@ -247,6 +273,36 @@ export class AuditOrchestrationConsumer {
     } catch {
       // Conservative policy: do not discover additional pages when robots cannot be obtained.
       return undefined
+    }
+  }
+
+  private async analyse(auditId: string): Promise<void> {
+    const pages = await this.database.auditPage.findMany({ where: { auditRunId: auditId } })
+    for (const item of evaluateFindings(pages)) {
+      await this.database.auditFinding.upsert({
+        where: { auditRunId_fingerprint: { auditRunId: auditId, fingerprint: item.fingerprint } },
+        create: {
+          auditRunId: auditId,
+          auditPageId: item.pageId,
+          category: item.category,
+          ruleId: item.ruleId,
+          severity: item.severity,
+          title: item.title,
+          description: item.description,
+          evidence: item.evidence,
+          recommendationTemplate: item.recommendationTemplate,
+          fingerprint: item.fingerprint,
+        },
+        update: {
+          severity: item.severity,
+          title: item.title,
+          description: item.description,
+          evidence: item.evidence,
+          recommendationTemplate: item.recommendationTemplate,
+          lastDetectedAt: new Date(),
+          resolvedAt: null,
+        },
+      })
     }
   }
 

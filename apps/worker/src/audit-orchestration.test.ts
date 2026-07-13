@@ -13,7 +13,7 @@ const response = (url: string, html: string): HomepageResponse => ({
 })
 
 describe('audit orchestration bounded crawl', () => {
-  it('crawls safe internal pages, persists page failures, and reaches ANALYZING', async () => {
+  it('crawls safe internal pages, persists page failures, and completes analysis', async () => {
     let status: AuditRunStatus = AuditRunStatus.QUEUED
     const pages: object[] = []
     const database: AuditWorkerDatabase = {
@@ -52,7 +52,9 @@ describe('audit orchestration bounded crawl', () => {
           pages.push(args)
           return Promise.resolve()
         }),
+        findMany: vi.fn(() => Promise.resolve([])),
       },
+      auditFinding: { upsert: vi.fn(() => Promise.resolve()) },
       $transaction: async (callback) => callback(database),
     }
     const fetcher: SecurePageFetcher = {
@@ -73,7 +75,7 @@ describe('audit orchestration bounded crawl', () => {
       database,
     )
     await consumer.process({ auditRunId: 'audit', websiteId: 'site', organizationId: 'org' })
-    expect(status).toBe(AuditRunStatus.ANALYZING)
+    expect(status).toBe(AuditRunStatus.COMPLETED)
     expect(pages).toHaveLength(3)
     expect(JSON.stringify(pages)).toContain(AuditPageStatus.FAILED)
   })

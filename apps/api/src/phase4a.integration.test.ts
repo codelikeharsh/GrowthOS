@@ -396,6 +396,78 @@ describe.sequential('Phase 4A website registration integration', () => {
       'x-agency-organization-id': agencyId,
       'x-relationship-id': relationshipId,
     }
+    const page = await database.auditPage.create({
+      data: {
+        auditRunId: audit.id,
+        url: 'https://example.com/',
+        normalizedUrl: 'https://example.com/',
+        status: 'FETCHED',
+      },
+    })
+    await database.auditFinding.createMany({
+      data: [
+        {
+          auditRunId: audit.id,
+          auditPageId: page.id,
+          category: 'SEO',
+          ruleId: 'SEO_TITLE_MISSING',
+          severity: 'MEDIUM',
+          title: 'Missing title',
+          description: 'No title.',
+          evidence: { pageUrl: page.normalizedUrl },
+          recommendationTemplate: 'Add a title.',
+          fingerprint: `finding-a-${marker}`,
+        },
+        {
+          auditRunId: audit.id,
+          category: 'CONTENT',
+          ruleId: 'CONTENT_THIN',
+          severity: 'LOW',
+          title: 'Thin content',
+          description: 'Low word count.',
+          evidence: {},
+          recommendationTemplate: 'Add content.',
+          fingerprint: `finding-b-${marker}`,
+        },
+      ],
+    })
+    const findingsPath = `/api/v1/websites/${businessWebsiteId}/audits/${audit.id}/findings`
+    expect(
+      (await request('GET', findingsPath, undefined, businessJar, businessHeaders)).statusCode,
+    ).toBe(200)
+    expect(
+      (
+        await request(
+          'GET',
+          `${findingsPath}?severity=MEDIUM`,
+          undefined,
+          businessJar,
+          businessHeaders,
+        )
+      ).body,
+    ).toContain('SEO_TITLE_MISSING')
+    expect(
+      (
+        await request(
+          'GET',
+          `${findingsPath}?category=CONTENT`,
+          undefined,
+          businessJar,
+          businessHeaders,
+        )
+      ).body,
+    ).toContain('CONTENT_THIN')
+    expect(
+      (
+        await request(
+          'GET',
+          `${findingsPath}?ruleId=SEO_TITLE_MISSING&pageId=${page.id}&limit=1`,
+          undefined,
+          agencyJar,
+          agencyHeaders,
+        )
+      ).body,
+    ).toContain('Missing title')
     expect(
       (
         await request(
