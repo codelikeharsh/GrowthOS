@@ -47,11 +47,12 @@ and rate limits. `SESSION_COOKIE_NAME` and `CSRF_COOKIE_NAME` are stable non-sec
 uses opaque database-backed session/CSRF tokens, so it has no session signing-secret variable.
 Cookie `Secure` is automatically enabled when `NODE_ENV=production`.
 
-SMTP uses Nodemailer. Set `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD`,
-and verified `MAIL_FROM`; `SMTP_USER` and `SMTP_PASSWORD` must be provided together. For Resend
-SMTP, use Resend's documented SMTP host, port, username, API key as `SMTP_PASSWORD`, and
-`SMTP_SECURE=true` for implicit TLS port 465. Any compatible SMTP provider works. Do not use
-Mailpit in production.
+Railway blocks outbound SMTP on Trial/Hobby, so production API services must use Resend HTTPS:
+set `EMAIL_PROVIDER=resend`, `RESEND_API_KEY`, and a verified `MAIL_FROM`. The API applies the
+bounded `EMAIL_DELIVERY_TIMEOUT_MS` (default 10 seconds) to every provider request. Do not set or
+use SMTP variables for that provider. Local Mailpit remains supported with `EMAIL_PROVIDER=smtp`,
+`SMTP_HOST=localhost`, `SMTP_PORT=1025`, and `SMTP_SECURE=false`; SMTP is not the Railway
+production transport. `SMTP_USER` and `SMTP_PASSWORD` must be supplied together when SMTP is used.
 
 The AI service needs `NODE_ENV`, `LOG_LEVEL`, `AI_PROVIDER`, and optional `OPENAI_API_KEY` plus
 `OPENAI_MODEL`. No current production journey requires AI provider credentials.

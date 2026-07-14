@@ -2,7 +2,7 @@ import { ConflictException, Inject, Injectable, UnauthorizedException } from '@n
 import { getDatabaseClient, UserStatus } from '@growthos/db'
 import { AuditService, auditActions } from './audit.service.js'
 import { getApiEnvironment } from './environment.js'
-import { MailService } from './mail.service.js'
+import { EmailDeliveryError, MailService } from './mail.service.js'
 import { RateLimitService } from './rate-limit.service.js'
 import type { RequestMetadata } from './request-context.js'
 import {
@@ -37,7 +37,10 @@ export class AuthService {
     const passwordHash = await hashPassword(password)
     const token = createOpaqueToken()
     const existing = await this.database.user.findUnique({ where: { email }, select: { id: true } })
-    if (existing) throw new ConflictException('An account with this email already exists')
+    if (existing)
+      throw new ConflictException(
+        'An account with this email already exists. Request another verification email if needed.',
+      )
     const user = await this.database.user.create({
       data: {
         email,
@@ -60,8 +63,60 @@ export class AuthService {
       targetId: user.id,
       request,
     })
-    await this.mail.sendEmailVerification(email, token)
-    return { message: 'Registration created. Check your email to verify the account.' }
+    try {
+      await this.mail.sendEmailVerification(email, token)
+      return {
+        message: 'Registration created. Check your email to verify the account.',
+        verificationEmailSent: true,
+      }
+    } catch (error) {
+      if (!(error instanceof EmailDeliveryError)) throw error
+      return {
+        message:
+          'Registration created, but we could not send the verification email. Use resend verification to try again.',
+        verificationEmailSent: false,
+      }
+    }
+  }
+
+  async resendVerification(emailInput: string, request: RequestMetadata) {
+    const email = normalizeEmail(emailInput)
+    await this.rateLimit.consume(
+      'email-verification',
+      `${email}:${request.ipAddress}`,
+      this.environment.EMAIL_VERIFICATION_RESEND_RATE_LIMIT,
+    )
+    const user = await this.database.user.findUnique({
+      where: { email },
+      select: { id: true, email: true, status: true, emailVerifiedAt: true },
+    })
+    if (!user || user.status !== UserStatus.PENDING_VERIFICATION || user.emailVerifiedAt) {
+      return {
+        message: 'If that account requires verification, a verification email will be sent.',
+      }
+    }
+    const token = createOpaqueToken()
+    const verification = await this.database.emailVerificationToken.create({
+      data: {
+        userId: user.id,
+        tokenHash: hashToken(token),
+        expiresAt: new Date(Date.now() + this.environment.EMAIL_VERIFICATION_TTL_MINUTES * 60_000),
+      },
+    })
+    try {
+      await this.mail.sendEmailVerification(user.email, token)
+    } catch (error) {
+      await this.database.emailVerificationToken.delete({ where: { id: verification.id } })
+      if (!(error instanceof EmailDeliveryError)) throw error
+      return {
+        message: 'If that account requires verification, a verification email will be sent.',
+      }
+    }
+    await this.database.emailVerificationToken.updateMany({
+      where: { userId: user.id, consumedAt: null, id: { not: verification.id } },
+      data: { consumedAt: new Date() },
+    })
+    return { message: 'If that account requires verification, a verification email will be sent.' }
   }
 
   async verifyEmail(rawToken: string, request: RequestMetadata) {

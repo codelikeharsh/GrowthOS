@@ -23,6 +23,24 @@ describe('environment schemas', () => {
     ).toThrow('SMTP_USER and SMTP_PASSWORD must be configured together')
   })
 
+  it('requires a Resend API key only for the Resend provider', () => {
+    expect(() =>
+      parseEnvironment(apiEnvironmentSchema, {
+        DATABASE_URL: 'postgresql://user:pass@localhost:5432/db',
+        REDIS_URL: 'redis://localhost:6379',
+        EMAIL_PROVIDER: 'resend',
+      }),
+    ).toThrow('RESEND_API_KEY is required')
+    expect(
+      parseEnvironment(apiEnvironmentSchema, {
+        DATABASE_URL: 'postgresql://user:pass@localhost:5432/db',
+        REDIS_URL: 'redis://localhost:6379',
+        EMAIL_PROVIDER: 'resend',
+        RESEND_API_KEY: 're_test_key',
+      }).EMAIL_PROVIDER,
+    ).toBe('resend')
+  })
+
   it('rejects development web and SMTP defaults in production', () => {
     expect(() =>
       parseEnvironment(apiEnvironmentSchema, {

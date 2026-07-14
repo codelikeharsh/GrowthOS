@@ -19,6 +19,8 @@ export class ForgotPasswordDto {
   @IsEmail() email!: string
 }
 
+export class ResendVerificationDto extends ForgotPasswordDto {}
+
 export class ResetPasswordDto extends TokenDto {
   @IsString() @Length(12, 128) password!: string
 }

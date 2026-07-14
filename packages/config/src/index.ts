@@ -37,6 +37,10 @@ export const apiEnvironmentSchema = commonSchema
     LOGIN_RATE_LIMIT: z.coerce.number().int().min(1).max(100).default(5),
     PASSWORD_RESET_RATE_LIMIT: z.coerce.number().int().min(1).max(100).default(5),
     AUTH_RATE_LIMIT_WINDOW_SECONDS: z.coerce.number().int().min(10).max(86_400).default(900),
+    EMAIL_VERIFICATION_RESEND_RATE_LIMIT: z.coerce.number().int().min(1).max(100).default(3),
+    EMAIL_DELIVERY_TIMEOUT_MS: z.coerce.number().int().min(100).max(60_000).default(10_000),
+    EMAIL_PROVIDER: z.enum(['smtp', 'resend']).default('smtp'),
+    RESEND_API_KEY: optionalString,
     SMTP_HOST: z.string().min(1).default('localhost'),
     SMTP_PORT: z.coerce.number().int().min(1).max(65_535).default(1025),
     SMTP_SECURE: booleanFromString,
@@ -46,11 +50,21 @@ export const apiEnvironmentSchema = commonSchema
     OPENAPI_ENABLED: booleanFromString,
   })
   .superRefine((environment, context) => {
-    if (Boolean(environment.SMTP_USER) !== Boolean(environment.SMTP_PASSWORD)) {
+    if (
+      environment.EMAIL_PROVIDER === 'smtp' &&
+      Boolean(environment.SMTP_USER) !== Boolean(environment.SMTP_PASSWORD)
+    ) {
       context.addIssue({
         code: 'custom',
         path: ['SMTP_PASSWORD'],
         message: 'SMTP_USER and SMTP_PASSWORD must be configured together',
+      })
+    }
+    if (environment.EMAIL_PROVIDER === 'resend' && !environment.RESEND_API_KEY) {
+      context.addIssue({
+        code: 'custom',
+        path: ['RESEND_API_KEY'],
+        message: 'RESEND_API_KEY is required when EMAIL_PROVIDER is resend',
       })
     }
     if (environment.NODE_ENV !== 'production') return
@@ -68,7 +82,10 @@ export const apiEnvironmentSchema = commonSchema
         message: 'API_CORS_ORIGINS must contain only HTTPS origins in production',
       })
     }
-    if (environment.SMTP_HOST === 'localhost' || environment.SMTP_HOST === '127.0.0.1') {
+    if (
+      environment.EMAIL_PROVIDER === 'smtp' &&
+      (environment.SMTP_HOST === 'localhost' || environment.SMTP_HOST === '127.0.0.1')
+    ) {
       context.addIssue({
         code: 'custom',
         path: ['SMTP_HOST'],

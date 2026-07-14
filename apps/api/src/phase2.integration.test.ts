@@ -62,6 +62,10 @@ describe.sequential('Phase 2 identity and tenant integration', () => {
       LOGIN_RATE_LIMIT: 5,
       PASSWORD_RESET_RATE_LIMIT: 100,
       AUTH_RATE_LIMIT_WINDOW_SECONDS: 60,
+      EMAIL_VERIFICATION_RESEND_RATE_LIMIT: 3,
+      EMAIL_DELIVERY_TIMEOUT_MS: 1_000,
+      EMAIL_PROVIDER: 'smtp',
+      RESEND_API_KEY: undefined,
       SMTP_HOST: 'localhost',
       SMTP_PORT: 1025,
       SMTP_SECURE: false,
@@ -123,11 +127,19 @@ describe.sequential('Phase 2 identity and tenant integration', () => {
       password,
     })
     expect(registered.statusCode, registered.body).toBe(201)
+    expect(registered.json()).toMatchObject({ verificationEmailSent: true })
     const user = await database.user.findUniqueOrThrow({ where: { email: ownerEmail } })
     ownerId = user.id
     expect(user.passwordHash).toMatch(/^\$argon2id\$/)
     expect(user.passwordHash).not.toContain(password)
     expect(user.status).toBe(UserStatus.PENDING_VERIFICATION)
+
+    const resent = await request('POST', '/api/v1/auth/resend-verification', { email: ownerEmail })
+    expect(resent.statusCode, resent.body).toBe(200)
+    expect(resent.body).toContain('If that account requires verification')
+    expect(
+      await database.emailVerificationToken.count({ where: { userId: user.id, consumedAt: null } }),
+    ).toBe(1)
 
     const verificationToken = `verification-${marker}-abcdefghijklmnopqrstuvwxyz`
     await database.emailVerificationToken.create({

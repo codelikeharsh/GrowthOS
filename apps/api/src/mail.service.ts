@@ -1,11 +1,27 @@
 import { Injectable, type OnApplicationShutdown } from '@nestjs/common'
+import { createLogger } from '@growthos/logger'
 import nodemailer, { type Transporter } from 'nodemailer'
 import { getApiEnvironment } from './environment.js'
+
+export class EmailDeliveryError extends Error {
+  constructor(readonly reason: 'failed' | 'timeout') {
+    super(reason === 'timeout' ? 'Email delivery timed out' : 'Email delivery failed')
+    this.name = 'EmailDeliveryError'
+  }
+}
+
+interface EmailMessage {
+  to: string
+  subject: string
+  text: string
+  html: string
+}
 
 @Injectable()
 export class MailService implements OnApplicationShutdown {
   private transporter: Transporter | undefined
   private readonly environment = getApiEnvironment()
+  private readonly logger = createLogger('api', this.environment.LOG_LEVEL)
 
   async sendEmailVerification(email: string, token: string): Promise<void> {
     const url = `${this.environment.PUBLIC_WEB_URL}/verify-email?token=${encodeURIComponent(token)}`
@@ -36,6 +52,9 @@ export class MailService implements OnApplicationShutdown {
       host: this.environment.SMTP_HOST,
       port: this.environment.SMTP_PORT,
       secure: this.environment.SMTP_SECURE,
+      connectionTimeout: this.environment.EMAIL_DELIVERY_TIMEOUT_MS,
+      greetingTimeout: this.environment.EMAIL_DELIVERY_TIMEOUT_MS,
+      socketTimeout: this.environment.EMAIL_DELIVERY_TIMEOUT_MS,
       ...(this.environment.SMTP_USER && this.environment.SMTP_PASSWORD
         ? { auth: { user: this.environment.SMTP_USER, pass: this.environment.SMTP_PASSWORD } }
         : {}),
@@ -44,13 +63,59 @@ export class MailService implements OnApplicationShutdown {
   }
 
   private async send(to: string, subject: string, text: string, url: string): Promise<void> {
-    await this.getTransporter().sendMail({
-      from: this.environment.MAIL_FROM,
+    const message: EmailMessage = {
       to,
       subject,
       text,
       html: `<p>${escapeHtml(text.replace(url, ''))}</p><p><a href="${escapeHtml(url)}">Continue securely</a></p>`,
-    })
+    }
+    const provider = this.environment.EMAIL_PROVIDER
+    this.logger.info({ provider }, 'email delivery started')
+    try {
+      if (provider === 'resend') await this.sendWithResend(message)
+      else await this.sendWithSmtp(message)
+      this.logger.info({ provider }, 'email delivery succeeded')
+    } catch (error) {
+      const deliveryError =
+        error instanceof EmailDeliveryError ? error : new EmailDeliveryError('failed')
+      this.logger.error(
+        { provider, errorClass: deliveryError.name, errorMessage: deliveryError.message },
+        'email delivery failed',
+      )
+      throw deliveryError
+    }
+  }
+
+  private async sendWithSmtp(message: EmailMessage): Promise<void> {
+    try {
+      await this.getTransporter().sendMail({ from: this.environment.MAIL_FROM, ...message })
+    } catch {
+      throw new EmailDeliveryError('failed')
+    }
+  }
+
+  private async sendWithResend(message: EmailMessage): Promise<void> {
+    const apiKey = this.environment.RESEND_API_KEY
+    if (!apiKey) throw new EmailDeliveryError('failed')
+    const signal = AbortSignal.timeout(this.environment.EMAIL_DELIVERY_TIMEOUT_MS)
+    let response: Response
+    try {
+      response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        signal,
+        headers: {
+          authorization: `Bearer ${apiKey}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({ from: this.environment.MAIL_FROM, ...message }),
+      })
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'TimeoutError') {
+        throw new EmailDeliveryError('timeout')
+      }
+      throw new EmailDeliveryError('failed')
+    }
+    if (!response.ok) throw new EmailDeliveryError('failed')
   }
 }
 

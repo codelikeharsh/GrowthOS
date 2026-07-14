@@ -16,7 +16,14 @@ import type { FastifyReply, FastifyRequest } from 'fastify'
 import { AuditService, auditActions } from './audit.service.js'
 import { AuthenticationGuard } from './authentication.guard.js'
 import { AuthService } from './auth.service.js'
-import { ForgotPasswordDto, LoginDto, RegisterDto, ResetPasswordDto, TokenDto } from './auth.dto.js'
+import {
+  ForgotPasswordDto,
+  LoginDto,
+  RegisterDto,
+  ResendVerificationDto,
+  ResetPasswordDto,
+  TokenDto,
+} from './auth.dto.js'
 import { CsrfGuard } from './csrf.guard.js'
 import { getApiEnvironment } from './environment.js'
 import { CurrentAuth, getRequestMetadata, type AuthContext } from './request-context.js'
@@ -46,6 +53,12 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async verifyEmail(@Body() body: TokenDto, @Req() request: FastifyRequest) {
     return this.auth.verifyEmail(body.token, getRequestMetadata(request))
+  }
+
+  @Post('resend-verification')
+  @HttpCode(HttpStatus.OK)
+  async resendVerification(@Body() body: ResendVerificationDto, @Req() request: FastifyRequest) {
+    return this.auth.resendVerification(body.email, getRequestMetadata(request))
   }
 
   @Post('login')

@@ -19,6 +19,9 @@ export default function RegisterPage() {
       <p className="mt-6 text-sm">
         Already registered? <Link href="/login">Sign in</Link>
       </p>
+      <p className="mt-2 text-sm">
+        Missing a verification email? <Link href="/resend-verification">Resend verification</Link>
+      </p>
     </AuthCard>
   )
 }
