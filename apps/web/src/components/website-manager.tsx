@@ -69,10 +69,7 @@ export function WebsiteList({ context }: { context: WebsiteContext }) {
 
   return (
     <div className="space-y-6">
-      <form
-        className="max-w-2xl rounded-xl border border-[var(--line)] bg-white p-6"
-        onSubmit={register}
-      >
+      <form className="ui-card max-w-2xl p-6" onSubmit={register}>
         <h2 className="text-xl font-semibold">Register website</h2>
         <p className="mt-2 text-sm text-[var(--muted)]">
           This stores website metadata only. It does not fetch, crawl, or assess the URL.
@@ -80,7 +77,7 @@ export function WebsiteList({ context }: { context: WebsiteContext }) {
         <label className="mt-5 block font-medium">
           Website URL
           <input
-            className="mt-2 min-h-11 w-full rounded-md border border-[var(--line)] px-3"
+            className="mt-2 min-h-11 w-full rounded-md border px-3"
             onChange={(event) => setUrl(event.target.value)}
             placeholder="https://example.com"
             required
@@ -91,28 +88,33 @@ export function WebsiteList({ context }: { context: WebsiteContext }) {
         <label className="mt-4 block font-medium">
           Display name <span className="font-normal text-[var(--muted)]">(optional)</span>
           <input
-            className="mt-2 min-h-11 w-full rounded-md border border-[var(--line)] px-3"
+            className="mt-2 min-h-11 w-full rounded-md border px-3"
             onChange={(event) => setDisplayName(event.target.value)}
             value={displayName}
           />
         </label>
-        <button
-          className="mt-5 min-h-11 rounded-md bg-[var(--accent)] px-4 font-semibold text-white"
-          type="submit"
-        >
+        <button className="ui-button mt-5" type="submit">
           Register website
         </button>
       </form>
       {error ? (
-        <p className="text-red-800" role="alert">
+        <p className="rounded-md bg-red-50 p-3 text-sm text-red-800" role="alert">
           {error}
         </p>
       ) : null}
-      <section className="rounded-xl border border-[var(--line)] bg-white p-6">
-        <h2 className="text-xl font-semibold">Registered websites</h2>
-        {loading ? <p className="mt-4">Loading websites…</p> : null}
+      <section className="ui-card p-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold">Registered websites</h2>
+          <span className="ui-badge">{websites.length} tracked</span>
+        </div>
+        {loading ? <div className="ui-skeleton mt-4 h-28" aria-label="Loading websites" /> : null}
         {!loading && websites.length === 0 ? (
-          <p className="mt-4 text-[var(--muted)]">No websites are registered.</p>
+          <div className="ui-empty mt-4">
+            <h3 className="font-semibold">No websites registered</h3>
+            <p className="mt-2 text-sm text-[var(--muted)]">
+              Add the first client website to start a bounded, secure audit.
+            </p>
+          </div>
         ) : null}
         <ul className="mt-4 divide-y divide-[var(--line)]">
           {websites.map((website) => (
@@ -121,13 +123,12 @@ export function WebsiteList({ context }: { context: WebsiteContext }) {
                 <strong>{website.displayName ?? website.normalizedUrl}</strong>
                 <span className="block text-sm text-[var(--muted)]">{website.normalizedUrl}</span>
               </span>
-              <span className="text-sm text-[var(--muted)]">
+              <span
+                className={`ui-badge ${website.isActive ? 'ui-badge-success' : 'ui-badge-error'}`}
+              >
                 {website.isActive ? 'Active' : 'Disabled'}
               </span>
-              <Link
-                className="rounded-md border px-3 py-2"
-                href={`${context.detailBase}/${website.id}`}
-              >
+              <Link className="ui-button-secondary" href={`${context.detailBase}/${website.id}`}>
                 View details
               </Link>
             </li>
@@ -220,10 +221,7 @@ export function WebsiteDetail({
       <Link className="font-semibold text-[var(--accent)]" href={listHref}>
         ← Websites
       </Link>
-      <form
-        className="max-w-2xl rounded-xl border border-[var(--line)] bg-white p-6"
-        onSubmit={save}
-      >
+      <form className="ui-card max-w-2xl p-6" onSubmit={save}>
         <h2 className="text-xl font-semibold">Website details</h2>
         <p className="mt-2 text-sm text-[var(--muted)]">
           {website.isActive ? 'Active' : 'Disabled'}
@@ -231,7 +229,7 @@ export function WebsiteDetail({
         <label className="mt-5 block font-medium">
           Website URL
           <input
-            className="mt-2 min-h-11 w-full rounded-md border border-[var(--line)] px-3"
+            className="mt-2 min-h-11 w-full rounded-md border px-3"
             onChange={(event) => setUrl(event.target.value)}
             required
             type="url"
@@ -241,17 +239,13 @@ export function WebsiteDetail({
         <label className="mt-4 block font-medium">
           Display name
           <input
-            className="mt-2 min-h-11 w-full rounded-md border border-[var(--line)] px-3"
+            className="mt-2 min-h-11 w-full rounded-md border px-3"
             onChange={(event) => setDisplayName(event.target.value)}
             value={displayName}
           />
         </label>
         <div className="mt-5 flex flex-wrap gap-3">
-          <button
-            className="min-h-11 rounded-md bg-[var(--accent)] px-4 font-semibold text-white"
-            disabled={!website.isActive}
-            type="submit"
-          >
+          <button className="ui-button" disabled={!website.isActive} type="submit">
             Save changes
           </button>
           {website.isActive ? (

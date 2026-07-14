@@ -67,19 +67,25 @@ export function ClientList() {
     return () => controller.abort()
   }, [organization])
 
-  if (contextLoading) return <p>Loading agency workspace…</p>
+  if (contextLoading)
+    return <div className="ui-skeleton h-56" aria-label="Loading agency workspace" />
   if (!organization)
     return (
-      <p role="alert">{contextError || 'Create an agency organization before adding clients.'}</p>
+      <div className="ui-empty" role="alert">
+        <h2 className="font-semibold">Agency workspace needed</h2>
+        <p className="mt-2 text-sm text-[var(--muted)]">
+          {contextError || 'Create an agency organization before adding clients.'}
+        </p>
+      </div>
     )
 
   return (
     <section className="space-y-5">
-      <div className="flex flex-wrap items-end gap-3">
+      <div className="ui-card flex flex-wrap items-end gap-3 p-5">
         <label className="grow font-medium">
           Search clients
           <input
-            className="mt-2 min-h-11 w-full rounded-md border border-[var(--line)] px-3"
+            className="mt-2 min-h-11 w-full rounded-md border px-3"
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Business or trade name"
             value={search}
@@ -88,7 +94,7 @@ export function ClientList() {
         <label className="font-medium">
           Status
           <select
-            className="mt-2 block min-h-11 rounded-md border border-[var(--line)] px-3"
+            className="mt-2 block min-h-11 rounded-md border px-3"
             onChange={(event) => setStatus(event.target.value)}
             value={status}
           >
@@ -102,7 +108,7 @@ export function ClientList() {
         <label className="font-medium">
           Account manager
           <select
-            className="mt-2 block min-h-11 rounded-md border border-[var(--line)] px-3"
+            className="mt-2 block min-h-11 rounded-md border px-3"
             onChange={(event) => setAccountManagerUserId(event.target.value)}
             value={accountManagerUserId}
           >
@@ -114,31 +120,28 @@ export function ClientList() {
             ))}
           </select>
         </label>
-        <Link
-          className="min-h-11 rounded-md bg-[var(--accent)] px-5 py-3 font-semibold text-white"
-          href="/app/clients/new"
-        >
+        <Link className="ui-button" href="/app/clients/new">
           New client
         </Link>
       </div>
       {error ? (
-        <p role="alert" className="text-red-800">
+        <p role="alert" className="rounded-md bg-red-50 p-3 text-sm text-red-800">
           {error}
         </p>
       ) : null}
       {loading ? (
-        <p>Loading clients…</p>
+        <div className="ui-skeleton h-48" aria-label="Loading clients" />
       ) : clients.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-[var(--line)] p-8 text-center">
+        <div className="ui-empty">
           <h2 className="text-xl font-semibold">No clients found</h2>
           <p className="mt-2 text-[var(--muted)]">
             Create a real business client to begin onboarding.
           </p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-[var(--line)]">
+        <div className="ui-card overflow-x-auto">
           <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50">
+            <thead className="bg-[var(--surface-muted)] text-xs tracking-wide text-[var(--muted)] uppercase">
               <tr>
                 <th className="p-3">Business</th>
                 <th className="p-3">Status</th>
@@ -164,7 +167,13 @@ export function ClientList() {
                       </span>
                     ) : null}
                   </td>
-                  <td className="p-3">{client.status}</td>
+                  <td className="p-3">
+                    <span
+                      className={`ui-badge ${client.status === 'ACTIVE' ? 'ui-badge-success' : client.status === 'PENDING' ? 'ui-badge-warning' : ''}`}
+                    >
+                      {client.status}
+                    </span>
+                  </td>
                   <td className="p-3">{client.accountManager?.displayName ?? 'Unassigned'}</td>
                   <td className="p-3">{client.servicePlan ?? '—'}</td>
                   <td className="p-3">{client.invitation?.status ?? 'Not invited'}</td>

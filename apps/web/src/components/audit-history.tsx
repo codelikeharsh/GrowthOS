@@ -78,19 +78,16 @@ export function AuditHistory({
     }
   }
   return (
-    <section className="mt-6 rounded-xl border border-[var(--line)] bg-white p-6">
+    <section className="ui-card mt-6 p-6">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-xl font-semibold">Audit history</h2>
-        <button
-          className="rounded-md bg-[var(--accent)] px-3 py-2 font-semibold text-white"
-          onClick={() => void start()}
-          type="button"
-        >
+        <button className="ui-button" onClick={() => void start()} type="button">
           Start audit
         </button>
       </div>
       <p className="mt-2 text-sm text-[var(--muted)]">
-        Queued audits wait for the Phase 4D worker; no website is fetched here.
+        Each audit uses the registered website and follows the existing secure, bounded crawl
+        policy.
       </p>
       {error ? (
         <p className="mt-3 text-red-800" role="alert">
@@ -106,7 +103,7 @@ export function AuditHistory({
                 {audit.triggerType} · {new Date(audit.createdAt).toLocaleString()}
               </span>
             </span>
-            <Link className="rounded-md border px-3 py-2" href={`${base}/${audit.id}`}>
+            <Link className="ui-button-secondary" href={`${base}/${audit.id}`}>
               Details
             </Link>
             {audit.status === 'QUEUED' ? (
@@ -238,12 +235,19 @@ export function AuditStatus({
     )
   if (!audit) return <p>Loading audit…</p>
   return (
-    <section className="max-w-2xl rounded-xl border border-[var(--line)] bg-white p-6">
+    <section className="ui-card max-w-4xl p-6 sm:p-8">
       <Link className="font-semibold text-[var(--accent)]" href={listHref}>
         ← Website
       </Link>
-      <h2 className="mt-5 text-xl font-semibold">Audit status: {audit.status}</h2>
-      <dl className="mt-4 grid gap-3 text-sm">
+      <div className="mt-5 flex flex-wrap items-center gap-3">
+        <h2 className="text-2xl font-semibold tracking-tight">Audit report</h2>
+        <span
+          className={`ui-badge ${audit.status === 'COMPLETED' ? 'ui-badge-success' : audit.status === 'PARTIAL' ? 'ui-badge-warning' : audit.status === 'FAILED' ? 'ui-badge-error' : ''}`}
+        >
+          {audit.status}
+        </span>
+      </div>
+      <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-3">
         <div>
           <dt className="font-semibold">Requested</dt>
           <dd>{new Date(audit.createdAt).toLocaleString()}</dd>
@@ -265,8 +269,8 @@ export function AuditStatus({
           </div>
         ) : null}
       </dl>
-      <h3 className="mt-6 text-lg font-semibold">Findings</h3>
-      <div className="mt-2 flex gap-2">
+      <h3 className="mt-8 text-lg font-semibold">Findings</h3>
+      <div className="mt-3 flex flex-wrap gap-2">
         <select
           aria-label="Severity"
           value={severity}
@@ -297,7 +301,10 @@ export function AuditStatus({
                 (!category || finding.category === category),
             )
             .map((finding) => (
-              <li className="rounded border p-3 text-sm" key={finding.id}>
+              <li
+                className="rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--surface-raised)] p-4 text-sm"
+                key={finding.id}
+              >
                 <strong>
                   {finding.severity} · {finding.category}: {finding.title}
                 </strong>
@@ -317,7 +324,10 @@ export function AuditStatus({
       {pages.length ? (
         <ul className="mt-2 space-y-2 text-sm">
           {pages.map((page) => (
-            <li className="rounded border p-2" key={page.id}>
+            <li
+              className="rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--surface-raised)] p-3"
+              key={page.id}
+            >
               <strong>{page.status}</strong> · {page.normalizedUrl}
               {page.httpStatus ? ` (${page.httpStatus})` : ''}
               {page.errorCode ? ` — ${page.errorCode}` : ''}

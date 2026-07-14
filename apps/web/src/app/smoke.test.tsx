@@ -8,7 +8,7 @@ describe('web shell smoke tests', () => {
   it('renders an accessible home landmark', () => {
     const output = renderToStaticMarkup(createElement(HomePage))
     expect(output).toContain('<main')
-    expect(output).toContain('One secure workspace for agency growth operations')
+    expect(output).toContain('Growth intelligence, made operational')
   })
 
   it('renders the protected workspace loading boundary', () => {
