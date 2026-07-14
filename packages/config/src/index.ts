@@ -97,6 +97,9 @@ export const apiEnvironmentSchema = commonSchema
 export const workerEnvironmentSchema = commonSchema.extend({
   DATABASE_URL: z.string().startsWith('postgresql://'),
   REDIS_URL: z.string().startsWith('redis://'),
+  // No live provider is selectable yet. Keeping this explicit prevents a
+  // deployment from silently enabling arbitrary outbound measurements.
+  PERFORMANCE_PROVIDER: z.literal('disabled').default('disabled'),
 })
 
 export type ApiEnvironment = z.infer<typeof apiEnvironmentSchema>

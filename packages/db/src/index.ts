@@ -7,6 +7,9 @@ export {
   AuditPageStatus,
   AuditFindingCategory,
   AuditFindingSeverity,
+  AuditLinkKind,
+  AuditLinkStatus,
+  AuditStructuredDataStatus,
   AuditTriggerType,
   BusinessDayOfWeek,
   BusinessLocationType,
@@ -39,6 +42,11 @@ export type {
   AuditRun,
   AuditPage,
   AuditFinding,
+  AuditLink,
+  AuditPageMetric,
+  AuditStructuredData,
+  AuditCategoryScore,
+  AuditComparison,
   OutboxEvent,
 } from '../generated/client/index.js'
 

@@ -57,6 +57,12 @@ production transport. `SMTP_USER` and `SMTP_PASSWORD` must be supplied together 
 The AI service needs `NODE_ENV`, `LOG_LEVEL`, `AI_PROVIDER`, and optional `OPENAI_API_KEY` plus
 `OPENAI_MODEL`. No current production journey requires AI provider credentials.
 
+Phase 5 local measurements require no extra Railway variable or public-internet test dependency.
+An optional remote performance provider is intentionally not enabled by default: do not add a
+provider API key until the provider is configured through the worker's secure target-validation
+boundary, with HTTPS, strict timeout/rate limits, and a clearly labelled provider-metric source.
+Local response timing is not presented as Core Web Vitals.
+
 ## Database, storage, and deployment order
 
 The API pre-deploy command runs only `prisma migrate deploy`. It never runs `migrate dev`, reset,

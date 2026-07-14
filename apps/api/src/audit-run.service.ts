@@ -61,7 +61,10 @@ export class AuditRunService {
     try {
       created = await this.database.$transaction(async (transaction) => {
         const previous = await transaction.auditRun.findFirst({
-          where: { websiteId },
+          where: {
+            websiteId,
+            status: { in: [AuditRunStatus.COMPLETED, AuditRunStatus.PARTIAL] },
+          },
           orderBy: { createdAt: 'desc' },
         })
         const audit = await transaction.auditRun.create({
@@ -152,6 +155,7 @@ export class AuditRunService {
       category?: string
       ruleId?: string
       pageId?: string
+      search?: string
       limit?: number
     },
   ) {
@@ -163,6 +167,14 @@ export class AuditRunService {
         ...(filters.category ? { category: filters.category as never } : {}),
         ...(filters.ruleId ? { ruleId: filters.ruleId } : {}),
         ...(filters.pageId ? { auditPageId: filters.pageId } : {}),
+        ...(filters.search
+          ? {
+              OR: [
+                { title: { contains: filters.search, mode: 'insensitive' } },
+                { description: { contains: filters.search, mode: 'insensitive' } },
+              ],
+            }
+          : {}),
       },
       include: { auditPage: { select: { normalizedUrl: true } } },
       orderBy: [{ severity: 'desc' }, { createdAt: 'asc' }],
@@ -172,14 +184,52 @@ export class AuditRunService {
 
   async report(userId: string, headers: WebsiteContextHeaders, websiteId: string, auditId: string) {
     const audit = await this.get(userId, headers, websiteId, auditId)
-    const [pages, findings] = await Promise.all([
-      this.database.auditPage.findMany({
-        where: { auditRunId: auditId },
-        orderBy: { createdAt: 'asc' },
-      }),
-      this.findings(userId, headers, websiteId, auditId, {}),
-    ])
-    return { audit, pages, findings }
+    const [pages, findings, categoryScores, comparison, links, providerExecutions] =
+      await Promise.all([
+        this.database.auditPage.findMany({
+          where: { auditRunId: auditId },
+          orderBy: { createdAt: 'asc' },
+          include: { metrics: true, structuredData: true },
+        }),
+        this.findings(userId, headers, websiteId, auditId, {}),
+        this.database.auditCategoryScore.findMany({
+          where: { auditRunId: auditId },
+          orderBy: { category: 'asc' },
+        }),
+        this.database.auditComparison.findUnique({ where: { auditRunId: auditId } }),
+        this.database.auditLink.findMany({
+          where: { auditRunId: auditId },
+          include: { sourceAuditPage: { select: { normalizedUrl: true } } },
+          orderBy: { firstDiscoveredAt: 'asc' },
+          take: 50,
+        }),
+        this.database.auditProviderExecution.findMany({
+          where: { auditRunId: auditId },
+          orderBy: { provider: 'asc' },
+        }),
+      ])
+    return { audit, pages, findings, categoryScores, comparison, links, providerExecutions }
+  }
+
+  async links(
+    userId: string,
+    headers: WebsiteContextHeaders,
+    websiteId: string,
+    auditId: string,
+    filters: { kind?: string; status?: string; limit?: number },
+  ) {
+    await this.get(userId, headers, websiteId, auditId)
+    const limit = Math.min(Math.max(filters.limit ?? 50, 1), 50)
+    return this.database.auditLink.findMany({
+      where: {
+        auditRunId: auditId,
+        ...(filters.kind ? { kind: filters.kind as never } : {}),
+        ...(filters.status ? { status: filters.status as never } : {}),
+      },
+      include: { sourceAuditPage: { select: { normalizedUrl: true } } },
+      orderBy: { firstDiscoveredAt: 'asc' },
+      take: limit,
+    })
   }
 
   async cancel(

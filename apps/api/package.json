@@ -12,10 +12,10 @@
     "format": "prettier --write --ignore-path ../../.prettierignore .",
     "format:check": "prettier --check --ignore-path ../../.prettierignore .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run",
-    "test:unit": "vitest run --exclude '**/*.integration.test.ts'",
-    "test:integration": "vitest run src/dependencies.integration.test.ts src/phase2.integration.test.ts src/phase3.integration.test.ts",
-    "test:e2e": "vitest run src/app.test.ts",
+    "test": "node --env-file-if-exists=../../.env ../../scripts/run-command.cjs vitest run",
+    "test:unit": "node --env-file-if-exists=../../.env ../../scripts/run-command.cjs vitest run --exclude '**/*.integration.test.ts'",
+    "test:integration": "node --env-file-if-exists=../../.env ../../scripts/run-command.cjs vitest run src/dependencies.integration.test.ts src/phase2.integration.test.ts src/phase3.integration.test.ts src/phase4a.integration.test.ts",
+    "test:e2e": "node --env-file-if-exists=../../.env ../../scripts/run-command.cjs vitest run src/app.test.ts",
     "clean": "rimraf dist coverage"
   },
   "dependencies": {

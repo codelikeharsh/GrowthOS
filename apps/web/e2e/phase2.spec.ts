@@ -84,7 +84,7 @@ test('registration, verification, organization and invitation flow works in a br
   await memberPage.getByRole('button', { name: 'Accept invitation' }).click()
   await expect(memberPage.getByRole('status')).toContainText('Invitation accepted')
   await memberPage.getByRole('link', { name: 'Open workspace' }).click()
-  await expect(memberPage.getByRole('heading', { name: 'Workspace' })).toBeVisible()
+  await expect(memberPage.getByRole('heading', { name: 'Workspace', exact: true })).toBeVisible()
   await memberContext.close()
 
   await page.reload()

@@ -112,6 +112,30 @@ export function evaluateFindings(pages: PageForFinding[]): DeterministicFinding[
             'Add a concise description that accurately summarizes this page.',
           ),
         )
+      else if (page.metaDescription.length < 50)
+        findings.push(
+          finding(
+            page,
+            'SEO_META_DESCRIPTION_SHORT',
+            AuditFindingCategory.SEO,
+            AuditFindingSeverity.LOW,
+            'Meta description is very short',
+            'This page meta description is shorter than 50 characters.',
+            'Use a concise, page-specific description that explains the page.',
+          ),
+        )
+      else if (page.metaDescription.length > 160)
+        findings.push(
+          finding(
+            page,
+            'SEO_META_DESCRIPTION_LONG',
+            AuditFindingCategory.SEO,
+            AuditFindingSeverity.LOW,
+            'Meta description is long',
+            'This page meta description exceeds 160 characters.',
+            'Shorten the description while preserving its useful summary.',
+          ),
+        )
       if (!page.canonicalUrl)
         findings.push(
           finding(
@@ -122,6 +146,18 @@ export function evaluateFindings(pages: PageForFinding[]): DeterministicFinding[
             'Canonical URL is missing',
             'This page does not provide a canonical URL.',
             'Add a canonical URL for this page.',
+          ),
+        )
+      else if (!sameHost(page.normalizedUrl, page.canonicalUrl))
+        findings.push(
+          finding(
+            page,
+            'SEO_CANONICAL_CROSS_HOST',
+            AuditFindingCategory.SEO,
+            AuditFindingSeverity.MEDIUM,
+            'Canonical points to another host',
+            'The canonical URL points to a host other than the crawled page host.',
+            'Confirm the cross-host canonical is intentional, or use the canonical host for this page.',
           ),
         )
       if ((page.wordCount ?? 0) < 100)
@@ -163,6 +199,14 @@ export function evaluateFindings(pages: PageForFinding[]): DeterministicFinding[
           )
   }
   return findings
+}
+
+function sameHost(pageUrl: string, canonicalUrl: string): boolean {
+  try {
+    return new URL(pageUrl).hostname === new URL(canonicalUrl, pageUrl).hostname
+  } catch {
+    return false
+  }
 }
 
 function finding(

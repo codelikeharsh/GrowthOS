@@ -113,6 +113,9 @@ export interface HomepageResponse {
   body: Buffer
   durationMs: number
   connection: SafeConnection
+  /** Response headers are analysed as compact facts only; response bodies are
+   * never persisted outside the bounded crawler. */
+  headers?: Record<string, string | string[] | undefined>
 }
 
 export interface SecurePageFetcher {
@@ -155,7 +158,11 @@ export class SecureHomepageFetcher implements SecurePageFetcher {
       const contentType = (
         String(response.headers['content-type'] ?? '').split(';')[0] ?? ''
       ).toLowerCase()
-      if (response.statusCode !== 404 && !allowedContentTypes.includes(contentType))
+      if (
+        response.statusCode !== 404 &&
+        !allowedContentTypes.includes('*') &&
+        !allowedContentTypes.includes(contentType)
+      )
         throw new HomepageFetchError(
           'AUDIT_PAGE_CONTENT_TYPE_UNSUPPORTED',
           'Homepage response is not HTML',
@@ -167,6 +174,7 @@ export class SecureHomepageFetcher implements SecurePageFetcher {
         body: response.body,
         durationMs: Date.now() - started,
         connection: this.firstConnection(target),
+        headers: response.headers,
       }
     }
   }

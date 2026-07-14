@@ -108,14 +108,27 @@ until a future production-ready pinned-IP browser capture and private-storage im
   sitemap files cap at 5, sitemap index depth remains pending, and at most 200 sitemap URLs are examined.
 - Phase 4E1: deterministic technical, SEO, and content findings with stable rule IDs/fingerprints;
   audits complete or become partial after analysis without AI-generated recommendations.
-- Remaining Phase 4: multi-page discovery/crawling, progress, findings, screenshots, and report UI.
 
 Validation: see [Phase 4D1 acceptance validation](testing/phase-4d1-validation.md).
 Phase 4E1 validation: see [Phase 4E1 acceptance validation](testing/phase-4e1-validation.md).
 
 ## Phase 5: Advanced Website Analysis
 
-Deliver Lighthouse, axe-core checks, SEO checks, broken-link detection, structured-data checks, conversion heuristics, recurring audits, comparisons, and security/performance tests.
+Status: complete. Phase 5 extends the same tenant-authorized, secure bounded audit pipeline;
+it does not introduce AI recommendations, unrestricted browser navigation, or a production SSRF bypass.
+
+- Typed audit page metrics, link records, JSON-LD summaries, category scores, and comparisons.
+- Deterministic static technical SEO, accessibility, performance, mobile, structured-data, link,
+  and security-header rules with stable fingerprints.
+- Bounded link verification through the existing pinned-IP secure fetcher; external targets are
+  checked but never recursively crawled.
+- Transparent Phase 5 scoring (`phase-5-v1`) and previous-audit comparison using compatible
+  fingerprint and score records.
+- Optional remote performance providers use an injectable, timeout-bound boundary and persist only
+  labelled compact metrics/statuses. They are disabled by default; a provider failure makes an audit
+  partial without removing deterministic findings.
+
+Validation: see [Phase 5 acceptance validation](testing/phase-5-validation.md).
 
 ## Phase 6: AI Recommendations
 

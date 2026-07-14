@@ -15,6 +15,14 @@ import {
   sitemapCandidates,
 } from './robots-sitemaps.js'
 import { evaluateFindings } from './finding-rules.js'
+import {
+  analysePageHtml,
+  evaluateAdvancedFindings,
+  type AdvancedPageAnalysis,
+} from './advanced-analysis.js'
+import { compareAuditRuns } from './audit-comparison.js'
+import { scoreAudit, SCORING_VERSION } from './audit-scoring.js'
+import { DisabledPerformanceProvider, type PerformanceProvider } from './performance-provider.js'
 
 interface AuditRecord {
   id: string
@@ -22,6 +30,7 @@ interface AuditRecord {
   websiteId: string
   status: AuditRunStatus
   version: number
+  previousAuditRunId?: string | null
   website: {
     id: string
     businessOrganizationId: string
@@ -49,10 +58,37 @@ export interface AuditWorkerDatabase {
         metaDescription?: string | null
         canonicalUrl?: string | null
         wordCount?: number | null
+        loadDurationMs?: number | null
       }[]
     >
+    count?(args: object): Promise<number>
   }
-  auditFinding: { upsert(args: object): Promise<unknown> }
+  auditFinding: {
+    upsert(args: object): Promise<unknown>
+    findMany?(args: object): Promise<{ fingerprint: string; severity: string }[]>
+  }
+  auditPageMetric?: {
+    upsert(args: object): Promise<unknown>
+    findMany?(
+      args: object,
+    ): Promise<{ auditPageId: string; summary: unknown; contentHash?: string | null }[]>
+  }
+  auditLink?: {
+    upsert(args: object): Promise<unknown>
+    findMany?(
+      args: object,
+    ): Promise<
+      { id: string; destinationUrl: string; kind: string; sourceAuditPageId?: string | null }[]
+    >
+    updateMany?(args: object): Promise<unknown>
+  }
+  auditStructuredData?: { upsert(args: object): Promise<unknown> }
+  auditCategoryScore?: {
+    upsert(args: object): Promise<unknown>
+    findMany?(args: object): Promise<{ category: string; score: number }[]>
+  }
+  auditComparison?: { upsert(args: object): Promise<unknown> }
+  auditProviderExecution?: { upsert(args: object): Promise<unknown> }
   $transaction<T>(callback: (transaction: AuditWorkerDatabase) => Promise<T>): Promise<T>
 }
 
@@ -66,6 +102,7 @@ export class AuditOrchestrationConsumer {
     private readonly fetcher: SecurePageFetcher,
     private readonly logger: AuditWorkerLogger,
     private readonly database: AuditWorkerDatabase = getDatabaseClient() as unknown as AuditWorkerDatabase,
+    private readonly performanceProvider: PerformanceProvider = new DisabledPerformanceProvider(),
   ) {}
 
   async process(payload: AuditOrchestrationPayload, jobId?: string): Promise<void> {
@@ -111,16 +148,24 @@ export class AuditOrchestrationConsumer {
       if ((await this.status(audit.id)) !== AuditRunStatus.CRAWLING) return
       await this.crawl(audit.id, homepage, audit.website.url)
       if ((await this.status(audit.id)) !== AuditRunStatus.CRAWLING) return
+      await this.checkLinks(audit.id)
+      if ((await this.status(audit.id)) !== AuditRunStatus.CRAWLING) return
       if (!(await this.transition(audit.id, AuditRunStatus.CRAWLING, AuditRunStatus.ANALYZING)))
         return
-      await this.analyse(audit.id)
+      const providerFailed = await this.analyse(audit)
       const pages = await this.database.auditPage.findMany({ where: { auditRunId: audit.id } })
-      const terminal = pages.some((page) => page.status === AuditPageStatus.FAILED)
-        ? AuditRunStatus.PARTIAL
-        : AuditRunStatus.COMPLETED
+      const terminal =
+        providerFailed || pages.some((page) => page.status === AuditPageStatus.FAILED)
+          ? AuditRunStatus.PARTIAL
+          : AuditRunStatus.COMPLETED
       await this.database.auditRun.updateMany({
         where: { id: audit.id, status: AuditRunStatus.ANALYZING },
-        data: { status: terminal, completedAt: new Date(), version: { increment: 1 } },
+        data: {
+          status: terminal,
+          progressStage: 'report_finalised',
+          completedAt: new Date(),
+          version: { increment: 1 },
+        },
       })
       this.logger.info(
         { ...context, durationMs: homepage.durationMs },
@@ -132,7 +177,12 @@ export class AuditOrchestrationConsumer {
         where: {
           id: audit.id,
           status: {
-            in: [AuditRunStatus.QUEUED, AuditRunStatus.VALIDATING_TARGET, AuditRunStatus.CRAWLING],
+            in: [
+              AuditRunStatus.QUEUED,
+              AuditRunStatus.VALIDATING_TARGET,
+              AuditRunStatus.CRAWLING,
+              AuditRunStatus.ANALYZING,
+            ],
           },
         },
         data: {
@@ -157,6 +207,9 @@ export class AuditOrchestrationConsumer {
       data: {
         status: to,
         ...(to === AuditRunStatus.VALIDATING_TARGET ? { startedAt: new Date() } : {}),
+        ...(to === AuditRunStatus.VALIDATING_TARGET ? { progressStage: 'validating_target' } : {}),
+        ...(to === AuditRunStatus.CRAWLING ? { progressStage: 'crawling_pages' } : {}),
+        ...(to === AuditRunStatus.ANALYZING ? { progressStage: 'analysing_findings' } : {}),
         version: { increment: 1 },
       },
     })
@@ -274,13 +327,80 @@ export class AuditOrchestrationConsumer {
     }
   }
 
-  private async analyse(auditId: string): Promise<void> {
-    const pages = await this.database.auditPage.findMany({ where: { auditRunId: auditId } })
-    for (const item of evaluateFindings(pages)) {
+  /** Link checks are deliberately sequential and bounded. The secure fetcher
+   * revalidates every target and redirect; no external response body is stored
+   * and no external page is ever added to the crawl queue. */
+  private async checkLinks(auditId: string): Promise<void> {
+    if (!this.database.auditLink?.findMany || !this.database.auditLink.updateMany) return
+    await this.database.auditRun.updateMany({
+      where: { id: auditId, status: AuditRunStatus.CRAWLING },
+      data: { progressStage: 'checking_links', version: { increment: 1 } },
+    })
+    const links = await this.database.auditLink.findMany({
+      where: { auditRunId: auditId, kind: { in: ['INTERNAL', 'EXTERNAL'] } },
+      take: 200,
+      orderBy: { firstDiscoveredAt: 'asc' },
+    })
+    let checked = 0
+    for (const link of links) {
+      if ((await this.status(auditId)) !== AuditRunStatus.CRAWLING) return
+      try {
+        const response = await this.fetcher.fetch(link.destinationUrl, undefined, ['*'])
+        const redirected = response.finalUrl !== link.destinationUrl
+        await this.database.auditLink.updateMany({
+          where: { id: link.id },
+          data: {
+            status: response.httpStatus >= 400 ? 'BROKEN' : redirected ? 'REDIRECT' : 'WORKING',
+            httpStatus: response.httpStatus,
+            ...(redirected ? { redirectUrl: response.finalUrl, redirectDepth: 1 } : {}),
+            failureCode: null,
+          },
+        })
+      } catch (error) {
+        await this.database.auditLink.updateMany({
+          where: { id: link.id },
+          data: {
+            status: 'FAILED',
+            failureCode: error instanceof HomepageFetchError ? error.code : 'LINK_CHECK_FAILED',
+          },
+        })
+      }
+      checked += 1
+    }
+    await this.database.auditRun.updateMany({
+      where: { id: auditId, status: AuditRunStatus.CRAWLING },
+      data: { linksChecked: checked, progressStage: 'analysing_seo', version: { increment: 1 } },
+    })
+  }
+
+  private async analyse(audit: AuditRecord): Promise<boolean> {
+    const pages = await this.database.auditPage.findMany({ where: { auditRunId: audit.id } })
+    const metrics = this.database.auditPageMetric?.findMany
+      ? await this.database.auditPageMetric.findMany({
+          where: { auditPage: { auditRunId: audit.id } },
+        })
+      : []
+    const metricsByPageId = new Map(metrics.map((metric) => [metric.auditPageId, metric]))
+    const advancedPages = pages.flatMap((page) => {
+      const analysis = advancedAnalysis(metricsByPageId.get(page.id)?.summary)
+      return analysis
+        ? [
+            {
+              id: page.id,
+              normalizedUrl: page.normalizedUrl,
+              ...(page.httpStatus === undefined ? {} : { httpStatus: page.httpStatus }),
+              ...(page.loadDurationMs === undefined ? {} : { loadDurationMs: page.loadDurationMs }),
+              analysis,
+            },
+          ]
+        : []
+    })
+    const allFindings = [...evaluateFindings(pages), ...evaluateAdvancedFindings(advancedPages)]
+    for (const item of allFindings) {
       await this.database.auditFinding.upsert({
-        where: { auditRunId_fingerprint: { auditRunId: auditId, fingerprint: item.fingerprint } },
+        where: { auditRunId_fingerprint: { auditRunId: audit.id, fingerprint: item.fingerprint } },
         create: {
-          auditRunId: auditId,
+          auditRunId: audit.id,
           auditPageId: item.pageId,
           category: item.category,
           ruleId: item.ruleId,
@@ -302,6 +422,109 @@ export class AuditOrchestrationConsumer {
         },
       })
     }
+    const scores = scoreAudit(allFindings)
+    for (const score of scores) {
+      await this.database.auditCategoryScore?.upsert({
+        where: { auditRunId_category: { auditRunId: audit.id, category: score.category } },
+        create: {
+          auditRunId: audit.id,
+          category: score.category,
+          score: score.score,
+          findingCount: score.findingCount,
+          methodologyVersion: SCORING_VERSION,
+          explanation: score.explanation,
+        },
+        update: {
+          score: score.score,
+          findingCount: score.findingCount,
+          methodologyVersion: SCORING_VERSION,
+          explanation: score.explanation,
+        },
+      })
+    }
+    await this.database.auditRun.updateMany({
+      where: { id: audit.id, status: AuditRunStatus.ANALYZING },
+      data: { progressStage: 'comparing_previous_audit', version: { increment: 1 } },
+    })
+    const previousFindings = audit.previousAuditRunId
+      ? await this.database.auditFinding.findMany?.({
+          where: { auditRunId: audit.previousAuditRunId },
+          select: { fingerprint: true, severity: true },
+        })
+      : undefined
+    const previousScores = audit.previousAuditRunId
+      ? await this.database.auditCategoryScore?.findMany?.({
+          where: {
+            auditRunId: audit.previousAuditRunId,
+            methodologyVersion: SCORING_VERSION,
+          },
+          select: { category: true, score: true },
+        })
+      : undefined
+    const previousPageCount = audit.previousAuditRunId
+      ? await this.database.auditPage.count?.({ where: { auditRunId: audit.previousAuditRunId } })
+      : undefined
+    const comparison = compareAuditRuns({
+      currentFindings: allFindings.map((finding) => ({
+        fingerprint: finding.fingerprint,
+        severity: finding.severity,
+      })),
+      ...(previousFindings ? { previousFindings } : {}),
+      currentPageCount: pages.length,
+      ...(previousPageCount === undefined ? {} : { previousPageCount }),
+      currentScores: scores,
+      ...(previousScores ? { previousScores } : {}),
+    })
+    await this.database.auditComparison?.upsert({
+      where: { auditRunId: audit.id },
+      create: { auditRunId: audit.id, previousAuditRunId: audit.previousAuditRunId, ...comparison },
+      update: { previousAuditRunId: audit.previousAuditRunId, ...comparison },
+    })
+    const provider = await this.runPerformanceProvider(audit)
+    return provider.status === 'FAILED'
+  }
+
+  private async runPerformanceProvider(audit: AuditRecord) {
+    try {
+      const result = await this.performanceProvider.measure({
+        auditRunId: audit.id,
+        websiteUrl: audit.website.url,
+      })
+      await this.database.auditProviderExecution?.upsert({
+        where: { auditRunId_provider: { auditRunId: audit.id, provider: result.provider } },
+        create: {
+          auditRunId: audit.id,
+          provider: result.provider,
+          status: result.status,
+          metrics: result.metrics,
+          ...(result.errorCode ? { errorCode: result.errorCode } : {}),
+        },
+        update: {
+          status: result.status,
+          metrics: result.metrics,
+          ...(result.errorCode ? { errorCode: result.errorCode } : { errorCode: null }),
+          measuredAt: new Date(),
+        },
+      })
+      return result
+    } catch {
+      const result = {
+        provider: 'configured',
+        status: 'FAILED' as const,
+        metrics: {},
+        errorCode: 'PERFORMANCE_PROVIDER_FAILED',
+      }
+      await this.database.auditProviderExecution?.upsert({
+        where: { auditRunId_provider: { auditRunId: audit.id, provider: result.provider } },
+        create: { auditRunId: audit.id, ...result },
+        update: { ...result, measuredAt: new Date() },
+      })
+      this.logger.error(
+        { auditId: audit.id, provider: result.provider },
+        'performance provider failed',
+      )
+      return result
+    }
   }
 
   private async persistSuccess(
@@ -309,8 +532,14 @@ export class AuditOrchestrationConsumer {
     requestedUrl: string,
     response: HomepageResponse,
   ): Promise<void> {
-    const metadata = extractPageMetadata(response.body.toString('utf8'))
-    await this.database.auditPage.upsert({
+    const html = response.body.toString('utf8')
+    const metadata = extractPageMetadata(html)
+    const analysis = analysePageHtml({
+      html,
+      pageUrl: response.finalUrl,
+      ...(response.headers ? { responseHeaders: response.headers } : {}),
+    })
+    const persisted = (await this.database.auditPage.upsert({
       where: {
         auditRunId_normalizedUrl: { auditRunId: auditId, normalizedUrl: response.finalUrl },
       },
@@ -339,7 +568,39 @@ export class AuditOrchestrationConsumer {
         status: AuditPageStatus.FETCHED,
         errorCode: null,
       },
+    })) as { id?: string } | undefined
+    if (!persisted?.id) return
+    await this.database.auditPageMetric?.upsert({
+      where: { auditPageId: persisted.id },
+      create: metricData(persisted.id, analysis, response.durationMs),
+      update: metricData(persisted.id, analysis, response.durationMs),
     })
+    for (const link of analysis.links) {
+      if (!link.destinationUrl) continue
+      await this.database.auditLink?.upsert({
+        where: {
+          auditRunId_sourceAuditPageId_destinationUrl: {
+            auditRunId: auditId,
+            sourceAuditPageId: persisted.id,
+            destinationUrl: link.destinationUrl,
+          },
+        },
+        create: { auditRunId: auditId, sourceAuditPageId: persisted.id, ...link },
+        update: { ...link },
+      })
+    }
+    for (const structuredData of analysis.structuredData) {
+      await this.database.auditStructuredData?.upsert({
+        where: {
+          auditPageId_blockIndex: {
+            auditPageId: persisted.id,
+            blockIndex: structuredData.blockIndex,
+          },
+        },
+        create: { auditPageId: persisted.id, ...structuredData },
+        update: { ...structuredData },
+      })
+    }
   }
 
   private async persistFailure(auditId: string, url: string, errorCode: string): Promise<void> {
@@ -378,6 +639,33 @@ export function extractPageMetadata(html: string): {
     ...(canonicalUrl ? { canonicalUrl: decode(canonicalUrl).slice(0, 2048) } : {}),
     wordCount: decode(text).trim().split(/\s+/).filter(Boolean).length,
   }
+}
+
+function metricData(pageId: string, analysis: AdvancedPageAnalysis, durationMs: number) {
+  return {
+    auditPageId: pageId,
+    htmlBytes: analysis.htmlBytes,
+    responseTimeMs: durationMs,
+    resourceCount: analysis.resourceCount,
+    javascriptCount: analysis.javascriptCount,
+    stylesheetCount: analysis.stylesheetCount,
+    imageCount: analysis.imageCount,
+    fontCount: analysis.fontCount,
+    thirdPartyOriginCount: analysis.thirdPartyOriginCount,
+    estimatedTransferBytes: analysis.estimatedTransferBytes,
+    htmlLang: analysis.htmlLang,
+    viewport: analysis.viewport,
+    contentHash: analysis.contentHash,
+    summary: analysis,
+  }
+}
+
+function advancedAnalysis(value: unknown): AdvancedPageAnalysis | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined
+  const candidate = value as Partial<AdvancedPageAnalysis>
+  return typeof candidate.contentHash === 'string' && Array.isArray(candidate.links)
+    ? (candidate as AdvancedPageAnalysis)
+    : undefined
 }
 
 function match(value: string, pattern: RegExp): string | undefined {

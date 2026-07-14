@@ -74,10 +74,21 @@ export class AuditRunController {
       category?: string
       ruleId?: string
       pageId?: string
+      search?: string
       limit?: number
     },
   ) {
     return this.audits.findings(auth.userId, this.context(headers), websiteId, auditId, query)
+  }
+  @Get(':auditId/links')
+  links(
+    @CurrentAuth() auth: AuthContext,
+    @Param('websiteId') websiteId: string,
+    @Param('auditId') auditId: string,
+    @Headers() headers: Record<string, string>,
+    @Query() query: { kind?: string; status?: string; limit?: number },
+  ) {
+    return this.audits.links(auth.userId, this.context(headers), websiteId, auditId, query)
   }
   @Get(':auditId/report')
   report(
@@ -97,15 +108,26 @@ export class AuditRunController {
     @Res() reply: FastifyReply,
   ) {
     await this.audits.get(auth.userId, this.context(headers), websiteId, auditId)
-    reply.raw.writeHead(200, {
-      'content-type': 'text/event-stream',
-      'cache-control': 'no-cache',
-      connection: 'keep-alive',
-    })
+    // Keep Fastify's already-authorized CORS headers intact. Calling raw
+    // writeHead here replaces them, which prevents the authenticated
+    // cross-origin browser stream from connecting.
+    reply.hijack()
+    for (const [name, value] of Object.entries(reply.getHeaders())) {
+      if (value !== undefined) reply.raw.setHeader(name, value)
+    }
+    reply.raw.statusCode = 200
+    reply.raw.setHeader('content-type', 'text/event-stream')
+    reply.raw.setHeader('cache-control', 'no-cache')
+    reply.raw.setHeader('connection', 'keep-alive')
+    // This is an authenticated CORS response, not an embeddable resource.
+    // Helmet's default same-origin resource policy otherwise blocks a browser
+    // fetch stream even when the approved CORS origin and credentials match.
+    reply.raw.setHeader('cross-origin-resource-policy', 'cross-origin')
+    reply.raw.flushHeaders()
     const send = async (): Promise<void> => {
       const audit = await this.audits.get(auth.userId, this.context(headers), websiteId, auditId)
       reply.raw.write(
-        `event: progress\ndata: ${JSON.stringify({ status: audit.status, pagesDiscovered: audit.pagesDiscovered, pagesProcessed: audit.pagesProcessed })}\n\n`,
+        `event: progress\ndata: ${JSON.stringify({ status: audit.status, progressStage: audit.progressStage, pagesDiscovered: audit.pagesDiscovered, pagesProcessed: audit.pagesProcessed, linksChecked: audit.linksChecked })}\n\n`,
       )
     }
     await send()

@@ -57,7 +57,7 @@ function fixtureResponse(url: string, body: string, contentType = 'text/html'): 
   }
 }
 
-test('Phase 4 deterministic audit journey renders a tenant-isolated report', async ({
+test('Phase 5 deterministic audit journey renders advanced results and remains tenant-isolated', async ({
   browser,
   page,
   request,
@@ -125,7 +125,7 @@ test('Phase 4 deterministic audit journey renders a tenant-isolated report', asy
         return fixtureResponse(url, '<html><body><p>About fixture page</p></body></html>')
       return fixtureResponse(
         url,
-        '<html><body><a href="/about">About</a><p>Short fixture page</p></body></html>',
+        `<!doctype html><html><head><title>Fixture</title><script type="application/ld+json">{oops}</script></head><body><a href="/about">About</a><img src="/logo.png"><button></button><p>Short fixture page</p></body></html>`,
       )
     },
   }
@@ -142,17 +142,28 @@ test('Phase 4 deterministic audit journey renders a tenant-isolated report', asy
     (organization) => organization.type === 'BUSINESS',
   )?.id
   if (!organizationId) throw new Error('Expected business organization')
+  // The report opens before the worker runs, so its real progress subscription
+  // (or bounded fallback) must update a live browser view without a reload.
+  await businessPage.goto(detailHref)
   await worker.process({ auditRunId: auditId, websiteId, organizationId }, 'phase4-fixture-job')
 
-  await businessPage.goto(detailHref)
-  await expect(
-    businessPage.getByRole('heading', { name: /Audit status: (COMPLETED|PARTIAL)/ }),
-  ).toBeVisible()
+  await expect(businessPage.getByText(/^(COMPLETED|PARTIAL)$/)).toBeVisible({ timeout: 12_000 })
   await expect(businessPage.getByRole('heading', { name: 'Crawled pages' })).toBeVisible()
   await expect(
     businessPage.getByText('FETCHED · https://phase4-fixture.example.test/ (200)'),
   ).toBeVisible()
   await expect(businessPage.getByRole('heading', { name: 'Findings' })).toBeVisible()
+  await expect(businessPage.getByRole('heading', { name: 'Audit health' })).toBeVisible()
+  await expect(businessPage.getByRole('heading', { name: 'Link report' })).toBeVisible()
+  await expect(
+    businessPage.getByRole('paragraph').filter({ hasText: /^ACCESSIBILITY$/ }),
+  ).toBeVisible()
+  await expect(businessPage.getByText('JSON-LD cannot be parsed')).toBeVisible()
+
+  await expect(businessPage.getByText('report finalised')).toBeVisible()
+  await expect(
+    businessPage.getByText('Links checked').locator('..').getByText('1', { exact: true }),
+  ).toBeVisible()
 
   const outsider = await browser.newContext()
   const outsiderPage = await outsider.newPage()
@@ -171,19 +182,15 @@ test('Phase 4 deterministic audit journey renders a tenant-isolated report', asy
   await outsiderPage.getByRole('button', { name: 'Sign in' }).click()
   await outsiderPage.getByLabel('Name').fill(`Outsider ${marker}`)
   await outsiderPage.getByRole('button', { name: 'Create' }).click()
-  const denial = await outsiderPage.evaluate(
-    async ({ websiteId, auditId, organizationId }) => {
-      const base = `http://localhost:3001/api/v1/websites/${websiteId}/audits/${auditId}`
-      const headers = { 'x-organization-id': organizationId }
-      const [report, progress] = await Promise.all([
-        fetch(`${base}/report`, { credentials: 'include', headers }),
-        fetch(`${base}/events`, { credentials: 'include', headers }),
-      ])
-      return [report.status, progress.status]
-    },
-    { websiteId, auditId, organizationId },
+  await outsider.setExtraHTTPHeaders({ 'x-organization-id': organizationId })
+  const reportDenial = await outsiderPage.goto(
+    `http://localhost:3001/api/v1/websites/${websiteId}/audits/${auditId}/report`,
   )
-  expect(denial).toEqual([404, 404])
+  const progressPage = await outsider.newPage()
+  const progressDenial = await progressPage.goto(
+    `http://localhost:3001/api/v1/websites/${websiteId}/audits/${auditId}/events`,
+  )
+  expect([reportDenial?.status(), progressDenial?.status()]).toEqual([404, 404])
   await outsider.close()
   await businessContext.close()
   expect(relationshipUrl).toContain('/app/clients/')

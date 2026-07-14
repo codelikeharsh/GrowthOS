@@ -115,6 +115,39 @@ enum AuditFindingCategory {
   SEO
   CONTENT
   BROKEN_LINK
+  ACCESSIBILITY
+  PERFORMANCE
+  STRUCTURED_DATA
+  MOBILE
+  SECURITY
+}
+
+enum AuditLinkKind {
+  INTERNAL
+  EXTERNAL
+  UNSUPPORTED
+  MALFORMED
+}
+
+enum AuditLinkStatus {
+  WORKING
+  BROKEN
+  REDIRECT
+  UNCHECKED
+  FAILED
+}
+
+enum AuditStructuredDataStatus {
+  VALID
+  WARNING
+  ERROR
+  UNSUPPORTED
+}
+
+enum AuditProviderExecutionStatus {
+  SUCCEEDED
+  FAILED
+  UNAVAILABLE
 }
 
 enum AuditFindingSeverity {
@@ -397,33 +430,39 @@ model Website {
 }
 
 model AuditRun {
-  id                 String           @id @default(uuid()) @db.Uuid
-  organizationId     String           @map("organization_id") @db.Uuid
-  websiteId          String           @map("website_id") @db.Uuid
-  initiatedByUserId  String           @map("initiated_by_user_id") @db.Uuid
-  status             AuditRunStatus   @default(QUEUED)
-  triggerType        AuditTriggerType @default(MANUAL) @map("trigger_type")
-  configuration      Json?
-  idempotencyKey     String?          @map("idempotency_key") @db.VarChar(128)
-  startedAt          DateTime?        @map("started_at") @db.Timestamptz(6)
-  completedAt        DateTime?        @map("completed_at") @db.Timestamptz(6)
-  failedAt           DateTime?        @map("failed_at") @db.Timestamptz(6)
-  failureCode        String?          @map("failure_code") @db.VarChar(100)
-  failureMessage     String?          @map("failure_message") @db.VarChar(500)
-  pagesDiscovered    Int              @default(0) @map("pages_discovered")
-  pagesProcessed     Int              @default(0) @map("pages_processed")
-  previousAuditRunId String?          @map("previous_audit_run_id") @db.Uuid
-  version            Int              @default(1)
-  createdAt          DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt          DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
-  organization       Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  website            Website          @relation(fields: [websiteId], references: [id], onDelete: Restrict)
-  initiatedBy        User             @relation("AuditInitiator", fields: [initiatedByUserId], references: [id], onDelete: Restrict)
-  previousAuditRun   AuditRun?        @relation("PreviousAuditRun", fields: [previousAuditRunId], references: [id], onDelete: SetNull)
-  subsequentAuditRuns AuditRun[]      @relation("PreviousAuditRun")
-  outboxEvent        OutboxEvent?
-  pages              AuditPage[]
-  findings           AuditFinding[]
+  id                  String               @id @default(uuid()) @db.Uuid
+  organizationId      String               @map("organization_id") @db.Uuid
+  websiteId           String               @map("website_id") @db.Uuid
+  initiatedByUserId   String               @map("initiated_by_user_id") @db.Uuid
+  status              AuditRunStatus       @default(QUEUED)
+  triggerType         AuditTriggerType     @default(MANUAL) @map("trigger_type")
+  configuration       Json?
+  idempotencyKey      String?              @map("idempotency_key") @db.VarChar(128)
+  startedAt           DateTime?            @map("started_at") @db.Timestamptz(6)
+  completedAt         DateTime?            @map("completed_at") @db.Timestamptz(6)
+  failedAt            DateTime?            @map("failed_at") @db.Timestamptz(6)
+  failureCode         String?              @map("failure_code") @db.VarChar(100)
+  failureMessage      String?              @map("failure_message") @db.VarChar(500)
+  pagesDiscovered     Int                  @default(0) @map("pages_discovered")
+  pagesProcessed      Int                  @default(0) @map("pages_processed")
+  linksChecked        Int                  @default(0) @map("links_checked")
+  progressStage       String?              @map("progress_stage") @db.VarChar(100)
+  previousAuditRunId  String?              @map("previous_audit_run_id") @db.Uuid
+  version             Int                  @default(1)
+  createdAt           DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization        Organization         @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  website             Website              @relation(fields: [websiteId], references: [id], onDelete: Restrict)
+  initiatedBy         User                 @relation("AuditInitiator", fields: [initiatedByUserId], references: [id], onDelete: Restrict)
+  previousAuditRun    AuditRun?            @relation("PreviousAuditRun", fields: [previousAuditRunId], references: [id], onDelete: SetNull)
+  subsequentAuditRuns AuditRun[]           @relation("PreviousAuditRun")
+  outboxEvent         OutboxEvent?
+  pages               AuditPage[]
+  findings            AuditFinding[]
+  links               AuditLink[]
+  categoryScores      AuditCategoryScore[]
+  comparison          AuditComparison?
+  providerExecutions  AuditProviderExecution[]
 
   @@unique([websiteId, idempotencyKey])
   @@index([organizationId, createdAt])
@@ -432,27 +471,150 @@ model AuditRun {
 }
 
 model AuditPage {
-  id              String          @id @default(uuid()) @db.Uuid
-  auditRunId      String          @map("audit_run_id") @db.Uuid
-  url             String          @db.VarChar(2048)
-  normalizedUrl   String          @map("normalized_url") @db.VarChar(2048)
-  canonicalUrl    String?         @map("canonical_url") @db.VarChar(2048)
-  httpStatus      Int?            @map("http_status")
-  contentType     String?         @map("content_type") @db.VarChar(255)
-  title           String?         @db.VarChar(1000)
-  metaDescription String?         @map("meta_description") @db.VarChar(2000)
-  wordCount       Int?            @map("word_count")
-  loadDurationMs  Int?            @map("load_duration_ms")
+  id              String                @id @default(uuid()) @db.Uuid
+  auditRunId      String                @map("audit_run_id") @db.Uuid
+  url             String                @db.VarChar(2048)
+  normalizedUrl   String                @map("normalized_url") @db.VarChar(2048)
+  canonicalUrl    String?               @map("canonical_url") @db.VarChar(2048)
+  httpStatus      Int?                  @map("http_status")
+  contentType     String?               @map("content_type") @db.VarChar(255)
+  title           String?               @db.VarChar(1000)
+  metaDescription String?               @map("meta_description") @db.VarChar(2000)
+  wordCount       Int?                  @map("word_count")
+  loadDurationMs  Int?                  @map("load_duration_ms")
   status          AuditPageStatus
-  errorCode       String?         @map("error_code") @db.VarChar(100)
-  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
-  auditRun        AuditRun        @relation(fields: [auditRunId], references: [id], onDelete: Cascade)
+  errorCode       String?               @map("error_code") @db.VarChar(100)
+  createdAt       DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+  auditRun        AuditRun              @relation(fields: [auditRunId], references: [id], onDelete: Cascade)
   findings        AuditFinding[]
+  metrics         AuditPageMetric?
+  outgoingLinks   AuditLink[]           @relation("AuditLinkSource")
+  structuredData  AuditStructuredData[]
 
   @@unique([auditRunId, normalizedUrl])
   @@index([auditRunId, status])
   @@map("audit_pages")
+}
+
+model AuditPageMetric {
+  id                     String    @id @default(uuid()) @db.Uuid
+  auditPageId            String    @unique @map("audit_page_id") @db.Uuid
+  htmlBytes              Int       @default(0) @map("html_bytes")
+  responseTimeMs         Int?      @map("response_time_ms")
+  resourceCount          Int       @default(0) @map("resource_count")
+  javascriptCount        Int       @default(0) @map("javascript_count")
+  stylesheetCount        Int       @default(0) @map("stylesheet_count")
+  imageCount             Int       @default(0) @map("image_count")
+  fontCount              Int       @default(0) @map("font_count")
+  thirdPartyOriginCount  Int       @default(0) @map("third_party_origin_count")
+  estimatedTransferBytes Int       @default(0) @map("estimated_transfer_bytes")
+  htmlLang               String?   @map("html_lang") @db.VarChar(64)
+  viewport               String?   @db.VarChar(500)
+  contentHash            String?   @map("content_hash") @db.Char(64)
+  summary                Json      @default("{}")
+  createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  auditPage              AuditPage @relation(fields: [auditPageId], references: [id], onDelete: Cascade)
+
+  @@index([contentHash])
+  @@map("audit_page_metrics")
+}
+
+model AuditLink {
+  id                String          @id @default(uuid()) @db.Uuid
+  auditRunId        String          @map("audit_run_id") @db.Uuid
+  sourceAuditPageId String?         @map("source_audit_page_id") @db.Uuid
+  destinationUrl    String          @map("destination_url") @db.VarChar(2048)
+  kind              AuditLinkKind
+  status            AuditLinkStatus @default(UNCHECKED)
+  httpStatus        Int?            @map("http_status")
+  redirectUrl       String?         @map("redirect_url") @db.VarChar(2048)
+  redirectDepth     Int             @default(0) @map("redirect_depth")
+  anchorText        String?         @map("anchor_text") @db.VarChar(500)
+  failureCode       String?         @map("failure_code") @db.VarChar(100)
+  firstDiscoveredAt DateTime        @default(now()) @map("first_discovered_at") @db.Timestamptz(6)
+  createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  auditRun          AuditRun        @relation(fields: [auditRunId], references: [id], onDelete: Cascade)
+  sourceAuditPage   AuditPage?      @relation("AuditLinkSource", fields: [sourceAuditPageId], references: [id], onDelete: SetNull)
+
+  @@unique([auditRunId, sourceAuditPageId, destinationUrl])
+  @@index([auditRunId, kind, status])
+  @@index([sourceAuditPageId])
+  @@map("audit_links")
+}
+
+model AuditStructuredData {
+  id          String                    @id @default(uuid()) @db.Uuid
+  auditPageId String                    @map("audit_page_id") @db.Uuid
+  blockIndex  Int                       @map("block_index")
+  status      AuditStructuredDataStatus
+  types       String[]                  @default([])
+  context     String?                   @db.VarChar(500)
+  summary     Json                      @default("{}")
+  createdAt   DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime                  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  auditPage   AuditPage                 @relation(fields: [auditPageId], references: [id], onDelete: Cascade)
+
+  @@unique([auditPageId, blockIndex])
+  @@index([auditPageId, status])
+  @@map("audit_structured_data")
+}
+
+model AuditCategoryScore {
+  id                 String   @id @default(uuid()) @db.Uuid
+  auditRunId         String   @map("audit_run_id") @db.Uuid
+  category           String   @db.VarChar(64)
+  score              Int
+  findingCount       Int      @default(0) @map("finding_count")
+  methodologyVersion String   @map("methodology_version") @db.VarChar(32)
+  explanation        Json     @default("{}")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  auditRun           AuditRun @relation(fields: [auditRunId], references: [id], onDelete: Cascade)
+
+  @@unique([auditRunId, category])
+  @@index([auditRunId, category])
+  @@map("audit_category_scores")
+}
+
+model AuditComparison {
+  id                 String   @id @default(uuid()) @db.Uuid
+  auditRunId         String   @unique @map("audit_run_id") @db.Uuid
+  previousAuditRunId String?  @map("previous_audit_run_id") @db.Uuid
+  scoringVersion     String   @map("scoring_version") @db.VarChar(32)
+  overallScoreChange Int?     @map("overall_score_change")
+  newFindings        Int      @default(0) @map("new_findings")
+  resolvedFindings   Int      @default(0) @map("resolved_findings")
+  unchangedFindings  Int      @default(0) @map("unchanged_findings")
+  pageCountChange    Int?     @map("page_count_change")
+  details            Json     @default("{}")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  auditRun           AuditRun @relation(fields: [auditRunId], references: [id], onDelete: Cascade)
+
+  @@index([previousAuditRunId])
+  @@map("audit_comparisons")
+}
+
+/// Stores compact, labelled measurements from an optional performance provider.
+/// Raw provider payloads are deliberately not retained.
+model AuditProviderExecution {
+  id          String                       @id @default(uuid()) @db.Uuid
+  auditRunId  String                       @map("audit_run_id") @db.Uuid
+  provider    String                       @db.VarChar(64)
+  status      AuditProviderExecutionStatus
+  metrics     Json                         @default("{}")
+  errorCode   String?                      @map("error_code") @db.VarChar(100)
+  measuredAt  DateTime                     @default(now()) @map("measured_at") @db.Timestamptz(6)
+  createdAt   DateTime                     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime                     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  auditRun    AuditRun                     @relation(fields: [auditRunId], references: [id], onDelete: Cascade)
+
+  @@unique([auditRunId, provider])
+  @@index([auditRunId, status])
+  @@map("audit_provider_executions")
 }
 
 model AuditFinding {

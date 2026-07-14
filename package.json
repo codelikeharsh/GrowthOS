@@ -23,6 +23,7 @@
     "db:validate": "node --env-file=.env scripts/run-command.cjs pnpm --filter @growthos/db validate",
     "db:migrate": "node --env-file=.env scripts/run-command.cjs pnpm --filter @growthos/db migrate",
     "db:migrate:deploy": "node --env-file=.env scripts/run-command.cjs pnpm --filter @growthos/db migrate:deploy",
+    "db:migrate:status": "node --env-file=.env scripts/run-command.cjs pnpm --filter @growthos/db migrate:status",
     "db:studio": "node --env-file=.env scripts/run-command.cjs pnpm --filter @growthos/db studio",
     "railway:build:web": "pnpm --filter @growthos/web... build && node scripts/package-next-standalone.cjs",
     "railway:start:web": "pnpm --filter @growthos/web start",
