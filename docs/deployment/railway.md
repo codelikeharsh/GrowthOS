@@ -14,6 +14,11 @@ Set every source service's Railway root directory to the repository root. In eac
 settings, select the matching Config as Code path above. The Node services build shared packages
 from the root; do not configure a subdirectory root.
 
+The web build packages `apps/web/.next/static` into
+`apps/web/.next/standalone/apps/web/.next/static` after `next build`. If `apps/web/public` exists,
+it is copied to `apps/web/.next/standalone/apps/web/public` as well. The standalone server therefore
+serves the same hashed JavaScript, CSS, and public assets referenced by the generated HTML.
+
 ## Networking
 
 Generate public domains only for web and API. PostgreSQL, Redis, worker, and AI service remain
