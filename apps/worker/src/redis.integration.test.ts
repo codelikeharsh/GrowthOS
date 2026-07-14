@@ -4,6 +4,8 @@ import { WorkerRuntime, type RuntimeLogger } from './runtime.js'
 
 const runIntegration = process.env.RUN_INTEGRATION_TESTS === 'true'
 const environment = parseEnvironment(workerEnvironmentSchema, {
+  DATABASE_URL:
+    process.env.DATABASE_URL ?? 'postgresql://growthos:development@localhost:5432/growthos',
   REDIS_URL: process.env.REDIS_URL ?? 'redis://localhost:6379',
 })
 const logger: RuntimeLogger = {

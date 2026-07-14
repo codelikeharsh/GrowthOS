@@ -7,9 +7,12 @@ const logger: RuntimeLogger = { info: vi.fn(), error: vi.fn() }
 
 describe('worker foundation', () => {
   it('validates Redis configuration', () => {
-    expect(() => parseEnvironment(workerEnvironmentSchema, { REDIS_URL: 'invalid' })).toThrow(
-      'REDIS_URL',
-    )
+    expect(() =>
+      parseEnvironment(workerEnvironmentSchema, {
+        DATABASE_URL: 'postgresql://user:pass@localhost:5432/db',
+        REDIS_URL: 'invalid',
+      }),
+    ).toThrow('REDIS_URL')
   })
 
   it('logs failed-job metadata without payload data', () => {
@@ -27,6 +30,7 @@ describe('worker foundation', () => {
 
   it('supports idempotent graceful shutdown before a connection starts', async () => {
     const environment = parseEnvironment(workerEnvironmentSchema, {
+      DATABASE_URL: 'postgresql://user:pass@localhost:5432/db',
       REDIS_URL: 'redis://localhost:6379',
     })
     const runtime = new WorkerRuntime(environment, logger)

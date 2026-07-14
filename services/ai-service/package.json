@@ -5,6 +5,8 @@
   "description": "Python FastAPI health, configuration, and AI-provider interface shell.",
   "scripts": {
     "dev": ".venv/bin/python -m uvicorn growthos_ai.main:app --reload --port ${AI_SERVICE_PORT:-8000}",
+    "build:production": "python3 -m pip install --no-cache-dir .",
+    "start:production": "python3 -m uvicorn growthos_ai.main:app --host 0.0.0.0 --port ${PORT:?PORT is required in production}",
     "build": ".venv/bin/python -m compileall -q src",
     "lint": ".venv/bin/python -m ruff check .",
     "format": ".venv/bin/python -m ruff format .",

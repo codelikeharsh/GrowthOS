@@ -10,6 +10,27 @@ describe('environment schemas', () => {
     })
     expect(value.API_CORS_ORIGINS).toEqual(['http://localhost:3000', 'https://example.test'])
     expect(value.OPENAPI_ENABLED).toBe(false)
+    expect(value.SMTP_SECURE).toBe(false)
+  })
+
+  it('requires both SMTP credentials when either is configured', () => {
+    expect(() =>
+      parseEnvironment(apiEnvironmentSchema, {
+        DATABASE_URL: 'postgresql://user:pass@localhost:5432/db',
+        REDIS_URL: 'redis://localhost:6379',
+        SMTP_USER: 'smtp-user',
+      }),
+    ).toThrow('SMTP_USER and SMTP_PASSWORD must be configured together')
+  })
+
+  it('rejects development web and SMTP defaults in production', () => {
+    expect(() =>
+      parseEnvironment(apiEnvironmentSchema, {
+        NODE_ENV: 'production',
+        DATABASE_URL: 'postgresql://user:pass@postgres.internal:5432/db',
+        REDIS_URL: 'redis://redis.internal:6379',
+      }),
+    ).toThrow('PUBLIC_WEB_URL must use HTTPS in production')
   })
 
   it('rejects missing database configuration without leaking values', () => {
@@ -20,7 +41,10 @@ describe('environment schemas', () => {
 
   it('rejects a non-Redis worker URL', () => {
     expect(() =>
-      parseEnvironment(workerEnvironmentSchema, { REDIS_URL: 'https://example.test' }),
+      parseEnvironment(workerEnvironmentSchema, {
+        DATABASE_URL: 'postgresql://user:pass@localhost:5432/db',
+        REDIS_URL: 'https://example.test',
+      }),
     ).toThrow('REDIS_URL')
   })
 })

@@ -33,9 +33,12 @@ export class MailService implements OnApplicationShutdown {
 
   private getTransporter(): Transporter {
     this.transporter ??= nodemailer.createTransport({
-      host: this.environment.MAILPIT_SMTP_HOST,
-      port: this.environment.MAILPIT_SMTP_PORT,
-      secure: false,
+      host: this.environment.SMTP_HOST,
+      port: this.environment.SMTP_PORT,
+      secure: this.environment.SMTP_SECURE,
+      ...(this.environment.SMTP_USER && this.environment.SMTP_PASSWORD
+        ? { auth: { user: this.environment.SMTP_USER, pass: this.environment.SMTP_PASSWORD } }
+        : {}),
     })
     return this.transporter
   }

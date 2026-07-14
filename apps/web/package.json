@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "next dev --port ${WEB_PORT:-3000}",
     "build": "next build",
-    "start": "next start --port ${WEB_PORT:-3000}",
+    "start": "HOSTNAME=0.0.0.0 PORT=${PORT:-${WEB_PORT:-3000}} node .next/standalone/apps/web/server.js",
     "lint": "eslint .",
     "format": "prettier --write --ignore-path ../../.prettierignore .",
     "format:check": "prettier --check --ignore-path ../../.prettierignore .",

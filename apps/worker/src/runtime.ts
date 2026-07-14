@@ -1,6 +1,7 @@
 import { Worker, type Processor } from 'bullmq'
 import { Redis } from 'ioredis'
 import type { WorkerEnvironment } from '@growthos/config'
+import { checkDatabaseConnection } from '@growthos/db'
 
 export type WorkerHealth = 'starting' | 'ready' | 'stopping' | 'stopped' | 'unhealthy'
 
@@ -57,8 +58,9 @@ export class WorkerRuntime {
   async start(): Promise<void> {
     if (this.redis.status === 'wait') await this.redis.connect()
     await this.redis.ping()
+    await checkDatabaseConnection()
     this.state = 'ready'
-    this.logger.info('worker infrastructure is ready')
+    this.logger.info('worker PostgreSQL and Redis dependencies are ready')
   }
 
   registerProcessor<DataType>(queueName: string, processor: Processor<DataType>): Worker<DataType> {

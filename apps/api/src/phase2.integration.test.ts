@@ -62,8 +62,9 @@ describe.sequential('Phase 2 identity and tenant integration', () => {
       LOGIN_RATE_LIMIT: 5,
       PASSWORD_RESET_RATE_LIMIT: 100,
       AUTH_RATE_LIMIT_WINDOW_SECONDS: 60,
-      MAILPIT_SMTP_HOST: 'localhost',
-      MAILPIT_SMTP_PORT: 1025,
+      SMTP_HOST: 'localhost',
+      SMTP_PORT: 1025,
+      SMTP_SECURE: false,
       MAIL_FROM: 'no-reply@growthos.local',
       OPENAPI_ENABLED: false,
     })

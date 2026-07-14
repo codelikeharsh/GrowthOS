@@ -122,9 +122,10 @@ opening hours, social links, named permissions, and database-enforced partial/ex
 
 ## Known limitations
 
-- No website/audit, crawler, lead capture, projects, billing, or payments.
+- Homepage screenshots and object-storage-backed files are deferred; no object storage is required for
+  the current production journey.
 - No OpenAI call, provider adapter implementation, recommendation data, or fake AI response.
-- No worker product queue is registered.
+- Lead capture, projects, billing, payments, and Phase 5 work are not implemented.
 - Terraform implementation is deferred to production hardening.
 
 ## Deployment environment
@@ -132,5 +133,8 @@ opening hours, social links, named permissions, and database-enforced partial/ex
 Do not deploy local `.env` values. The deployment platform must supply a managed `DATABASE_URL`
 and managed `REDIS_URL`. Configure `NEXT_PUBLIC_API_URL` with the deployed API base URL,
 `API_CORS_ORIGINS` with the deployed web origin, and `PUBLIC_WEB_URL` with that same web origin.
-Use HTTPS and secure production session cookies; do not reuse local PostgreSQL, Redis, MinIO, or
+For Railway, prefer the documented `WEB_APP_URL` alias for the API's public web URL. Use HTTPS and
+secure production session cookies; do not reuse local PostgreSQL, Redis, MinIO, or
 session values in production. No platform-specific credentials are stored in this repository.
+See [Railway production deployment](docs/deployment/railway.md) for prepared config paths, required
+variables, deployment order, and post-deployment verification.

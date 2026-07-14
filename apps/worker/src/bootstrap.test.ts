@@ -14,6 +14,7 @@ describe('worker bootstrap composition', () => {
     const fetcher = { fetch: vi.fn() }
     const logger = { info: vi.fn(), error: vi.fn() }
     const environment = parseEnvironment(workerEnvironmentSchema, {
+      DATABASE_URL: 'postgresql://user:pass@localhost:5432/db',
       REDIS_URL: 'redis://localhost:6379',
     })
     expect(bootstrapWorker({ environment, logger, fetcher, runtime })).toBe(runtime)

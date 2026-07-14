@@ -5,14 +5,13 @@
       "cache": false,
       "env": [
         "AI_PROVIDER",
+        "AI_SERVICE_URL",
         "AI_SERVICE_PORT",
         "API_CORS_ORIGINS",
         "API_PORT",
         "DATABASE_URL",
         "LOG_LEVEL",
         "MAIL_FROM",
-        "MAILPIT_SMTP_HOST",
-        "MAILPIT_SMTP_PORT",
         "NEXT_PUBLIC_API_URL",
         "NODE_ENV",
         "OPENAI_API_KEY",
@@ -21,6 +20,11 @@
         "PASSWORD_RESET_RATE_LIMIT",
         "PASSWORD_RESET_TTL_MINUTES",
         "PUBLIC_WEB_URL",
+        "SMTP_HOST",
+        "SMTP_PASSWORD",
+        "SMTP_PORT",
+        "SMTP_SECURE",
+        "SMTP_USER",
         "REDIS_URL",
         "SESSION_COOKIE_NAME",
         "SESSION_TTL_HOURS",
@@ -29,6 +33,7 @@
         "INVITATION_TTL_HOURS",
         "LOGIN_RATE_LIMIT",
         "AUTH_RATE_LIMIT_WINDOW_SECONDS",
+        "WEB_APP_URL",
         "WEB_PORT"
       ],
       "persistent": true
@@ -58,8 +63,8 @@
         "DATABASE_URL",
         "REDIS_URL",
         "RUN_INTEGRATION_TESTS",
-        "MAILPIT_SMTP_HOST",
-        "MAILPIT_SMTP_PORT",
+        "SMTP_HOST",
+        "SMTP_PORT",
         "PUBLIC_WEB_URL"
       ],
       "outputs": []
@@ -75,8 +80,8 @@
         "DATABASE_URL",
         "REDIS_URL",
         "RUN_INTEGRATION_TESTS",
-        "MAILPIT_SMTP_HOST",
-        "MAILPIT_SMTP_PORT",
+        "SMTP_HOST",
+        "SMTP_PORT",
         "PUBLIC_WEB_URL"
       ],
       "outputs": []
@@ -88,8 +93,8 @@
         "DATABASE_URL",
         "REDIS_URL",
         "NEXT_PUBLIC_API_URL",
-        "MAILPIT_SMTP_HOST",
-        "MAILPIT_SMTP_PORT",
+        "SMTP_HOST",
+        "SMTP_PORT",
         "PUBLIC_WEB_URL"
       ],
       "outputs": []
