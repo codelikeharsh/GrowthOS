@@ -6,6 +6,15 @@ const booleanFromString = z
   .transform((value) => value === 'true')
 
 const optionalString = z.string().trim().min(1).optional()
+const cookieDomainSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .regex(/^(?!-)[a-z0-9-]+(?:\.[a-z0-9-]+)+$/, 'must be a DNS parent domain')
+  .refine((domain) => !domain.endsWith('.up.railway.app'), {
+    message: 'must not use a Railway shared parent domain',
+  })
+  .optional()
 
 const commonSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -30,6 +39,7 @@ export const apiEnvironmentSchema = commonSchema
     AI_SERVICE_URL: z.url().optional(),
     SESSION_COOKIE_NAME: z.string().min(1).default('growthos_session'),
     CSRF_COOKIE_NAME: z.string().min(1).default('growthos_csrf'),
+    COOKIE_DOMAIN: cookieDomainSchema,
     SESSION_TTL_HOURS: z.coerce.number().int().min(1).max(720).default(168),
     EMAIL_VERIFICATION_TTL_MINUTES: z.coerce.number().int().min(5).max(1440).default(60),
     PASSWORD_RESET_TTL_MINUTES: z.coerce.number().int().min(5).max(1440).default(30),
@@ -67,6 +77,13 @@ export const apiEnvironmentSchema = commonSchema
         message: 'RESEND_API_KEY is required when EMAIL_PROVIDER is resend',
       })
     }
+    if (environment.API_CORS_ORIGINS.includes('*')) {
+      context.addIssue({
+        code: 'custom',
+        path: ['API_CORS_ORIGINS'],
+        message: 'must not include a wildcard origin when credentials are enabled',
+      })
+    }
     if (environment.NODE_ENV !== 'production') return
     if (new URL(environment.PUBLIC_WEB_URL).protocol !== 'https:') {
       context.addIssue({
@@ -80,6 +97,29 @@ export const apiEnvironmentSchema = commonSchema
         code: 'custom',
         path: ['API_CORS_ORIGINS'],
         message: 'API_CORS_ORIGINS must contain only HTTPS origins in production',
+      })
+    }
+    if (
+      environment.API_CORS_ORIGINS.length !== 1 ||
+      environment.API_CORS_ORIGINS[0] !== environment.PUBLIC_WEB_URL
+    ) {
+      context.addIssue({
+        code: 'custom',
+        path: ['API_CORS_ORIGINS'],
+        message: 'must contain exactly PUBLIC_WEB_URL in production',
+      })
+    }
+    if (!environment.COOKIE_DOMAIN) {
+      context.addIssue({
+        code: 'custom',
+        path: ['COOKIE_DOMAIN'],
+        message: 'is required in production for shared app/API domains',
+      })
+    } else if (!new URL(environment.PUBLIC_WEB_URL).hostname.endsWith(environment.COOKIE_DOMAIN)) {
+      context.addIssue({
+        code: 'custom',
+        path: ['COOKIE_DOMAIN'],
+        message: 'must parent the configured PUBLIC_WEB_URL hostname',
       })
     }
     if (

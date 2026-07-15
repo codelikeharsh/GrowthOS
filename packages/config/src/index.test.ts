@@ -51,6 +51,39 @@ describe('environment schemas', () => {
     ).toThrow('PUBLIC_WEB_URL must use HTTPS in production')
   })
 
+  it('requires a reviewed shared cookie domain and one exact web origin in production', () => {
+    const production = {
+      NODE_ENV: 'production',
+      DATABASE_URL: 'postgresql://user:pass@postgres.internal:5432/db',
+      REDIS_URL: 'redis://redis.internal:6379',
+      PUBLIC_WEB_URL: 'https://app.zero2one.live',
+      API_CORS_ORIGINS: 'https://app.zero2one.live',
+      COOKIE_DOMAIN: 'zero2one.live',
+      EMAIL_PROVIDER: 'resend',
+      RESEND_API_KEY: 're_test_key',
+      MAIL_FROM: 'no-reply@zero2one.live',
+    }
+    expect(parseEnvironment(apiEnvironmentSchema, production).COOKIE_DOMAIN).toBe('zero2one.live')
+    expect(() =>
+      parseEnvironment(apiEnvironmentSchema, {
+        ...production,
+        COOKIE_DOMAIN: undefined,
+      }),
+    ).toThrow('is required in production for shared app/API domains')
+    expect(() =>
+      parseEnvironment(apiEnvironmentSchema, {
+        ...production,
+        COOKIE_DOMAIN: 'up.railway.app',
+      }),
+    ).toThrow('COOKIE_DOMAIN')
+    expect(() =>
+      parseEnvironment(apiEnvironmentSchema, {
+        ...production,
+        API_CORS_ORIGINS: 'https://app.zero2one.live,https://invalid.example',
+      }),
+    ).toThrow('must contain exactly PUBLIC_WEB_URL')
+  })
+
   it('rejects missing database configuration without leaking values', () => {
     expect(() =>
       parseEnvironment(apiEnvironmentSchema, { REDIS_URL: 'redis://localhost:6379' }),

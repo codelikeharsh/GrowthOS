@@ -100,4 +100,20 @@ describe('API HTTP foundation', () => {
     expect(response.body).not.toContain('internal detail')
     expect(response.json()).toMatchObject({ message: 'Internal server error' })
   })
+
+  it('allows credentials only for the configured web origin', async () => {
+    const allowed = await app.inject({
+      method: 'GET',
+      url: '/api/v1/health/live',
+      headers: { origin: 'http://localhost:3000' },
+    })
+    expect(allowed.headers['access-control-allow-origin']).toBe('http://localhost:3000')
+    expect(allowed.headers['access-control-allow-credentials']).toBe('true')
+    const denied = await app.inject({
+      method: 'GET',
+      url: '/api/v1/health/live',
+      headers: { origin: 'https://invalid.example' },
+    })
+    expect(denied.headers['access-control-allow-origin']).toBeUndefined()
+  })
 })

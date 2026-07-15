@@ -28,6 +28,11 @@ import { CsrfGuard } from './csrf.guard.js'
 import { getApiEnvironment } from './environment.js'
 import { CurrentAuth, getRequestMetadata, type AuthContext } from './request-context.js'
 import { SessionService, type CreatedSession } from './session.service.js'
+import {
+  clearCookieOptions,
+  csrfCookieOptions,
+  sessionCookieOptions,
+} from './session-cookie-options.js'
 
 @Controller({ path: 'auth', version: '1' })
 export class AuthController {
@@ -171,26 +176,23 @@ export class AuthController {
   }
 
   setSessionCookies(reply: FastifyReply, session: CreatedSession): void {
-    const secure = this.environment.NODE_ENV === 'production'
-    const maxAge = Math.max(0, Math.floor((session.expiresAt.getTime() - Date.now()) / 1000))
-    reply.setCookie(this.environment.SESSION_COOKIE_NAME, session.rawSessionToken, {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure,
-      path: '/',
-      maxAge,
-    })
-    reply.setCookie(this.environment.CSRF_COOKIE_NAME, session.rawCsrfToken, {
-      httpOnly: false,
-      sameSite: 'lax',
-      secure,
-      path: '/',
-      maxAge,
-    })
+    reply.setCookie(
+      this.environment.SESSION_COOKIE_NAME,
+      session.rawSessionToken,
+      sessionCookieOptions(this.environment, session),
+    )
+    reply.setCookie(
+      this.environment.CSRF_COOKIE_NAME,
+      session.rawCsrfToken,
+      csrfCookieOptions(this.environment, session),
+    )
   }
 
   clearSessionCookies(reply: FastifyReply): void {
-    reply.clearCookie(this.environment.SESSION_COOKIE_NAME, { path: '/' })
-    reply.clearCookie(this.environment.CSRF_COOKIE_NAME, { path: '/' })
+    reply.clearCookie(this.environment.SESSION_COOKIE_NAME, clearCookieOptions(this.environment))
+    reply.clearCookie(this.environment.CSRF_COOKIE_NAME, {
+      ...clearCookieOptions(this.environment),
+      httpOnly: false,
+    })
   }
 }

@@ -16,6 +16,18 @@ Store only the SHA-256 hash of the random token in PostgreSQL. Argon2id is requi
 
 State-changing cookie-authenticated requests require CSRF protection and origin validation.
 
+## Web and API subdomains
+
+For production on `app.zero2one.live` and `api.zero2one.live`, configure
+`COOKIE_DOMAIN=zero2one.live`. The API then sets the opaque `HttpOnly` session cookie and readable
+CSRF cookie with `Domain=zero2one.live`, `Path=/`, `Secure`, and `SameSite=Lax`. These subdomains
+are same-site HTTPS origins, so the browser includes cookies on credentialed API fetches while the
+web server can read the session cookie during its `/app` gate and forward only that cookie to API
+for `/me` verification.
+
+When `COOKIE_DOMAIN` is unset, cookies stay host-only for local development. Never set it to a
+shared Railway domain, place tokens in URLs/local storage, or use wildcard CORS with credentials.
+
 ## Session Lifecycle
 
 - Creation: after successful authentication, invalidate any pre-authentication session, generate a new random token, persist its SHA-256 hash and bounded expiry, then set the raw token cookie.

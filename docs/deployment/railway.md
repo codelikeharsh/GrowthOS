@@ -41,11 +41,20 @@ Set `NODE_ENV=production` on every application service. API and worker need Rail
 `DATABASE_URL`, Railway Redis `REDIS_URL`, and `LOG_LEVEL`. The worker uses Prisma to persist audit
 processing, so it needs the same private `DATABASE_URL` as API.
 
-API also requires `WEB_APP_URL` and `API_CORS_ORIGINS`, both set to the exact public HTTPS web
-origin; `NEXT_PUBLIC_API_URL` is required at web build time. Configure explicit session durations
-and rate limits. `SESSION_COOKIE_NAME` and `CSRF_COOKIE_NAME` are stable non-secret names. The app
-uses opaque database-backed session/CSRF tokens, so it has no session signing-secret variable.
-Cookie `Secure` is automatically enabled when `NODE_ENV=production`.
+API requires `WEB_APP_URL` and `API_CORS_ORIGINS`, both set to the exact public HTTPS web origin;
+`NEXT_PUBLIC_API_URL` is required at web build time. For the custom production domains set:
+`WEB_APP_URL=https://app.zero2one.live`, `API_CORS_ORIGINS=https://app.zero2one.live`, and
+`COOKIE_DOMAIN=zero2one.live` on API. Set `SESSION_COOKIE_NAME=growthos_session` on both API and
+web so the web server-side `/app` guard forwards the same opaque cookie to API. Do not set a cookie
+domain for `up.railway.app`, and do not use Railway's shared parent domain. Local development leaves
+`COOKIE_DOMAIN` unset and therefore retains host-only localhost cookies. Production rejects wildcard
+CORS origins; credentials are enabled only for the single configured `WEB_APP_URL` origin.
+
+Configure explicit session durations and rate limits. `SESSION_COOKIE_NAME` and
+`CSRF_COOKIE_NAME` are stable non-secret names. The app uses opaque database-backed session/CSRF
+tokens, so it has no session signing-secret variable. Cookie `Secure` is automatically enabled when
+`NODE_ENV=production`; session cookies are `HttpOnly`, while the CSRF cookie remains readable by
+same-site browser JavaScript for the CSRF header.
 
 Railway blocks outbound SMTP on Trial/Hobby, so production API services must use Resend HTTPS:
 set `EMAIL_PROVIDER=resend`, `RESEND_API_KEY`, and a verified `MAIL_FROM`. The API applies the
